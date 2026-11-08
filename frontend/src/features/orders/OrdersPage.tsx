@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, ShoppingBag, ArrowRight, CheckCircle2, XCircle, AlertCircle, RefreshCw } from 'lucide-react';
+import { Clock, ShoppingBag, ArrowRight, CheckCircle2, XCircle, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
 import { api, Order } from '../../lib/api';
 import { formatInr, formatUsd, formatDate } from '../../lib/formatters';
 
@@ -26,129 +26,141 @@ export const OrdersPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-10 space-y-8">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Your Order History</h1>
-          <p className="text-xs text-text-secondary mt-1">
-            Session-scoped purchase history and payment verification records
-          </p>
-        </div>
-
-        <button
-          onClick={fetchOrders}
-          className="p-2.5 rounded-xl border border-border text-text-secondary hover:text-text-primary hover:bg-surface transition-colors"
-          title="Refresh orders"
-        >
-          <RefreshCw className="w-4 h-4" />
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="py-20 flex flex-col items-center justify-center space-y-3">
-          <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-          <p className="text-xs text-text-secondary">Loading order history...</p>
-        </div>
-      ) : orders.length === 0 ? (
-        <div className="p-12 rounded-3xl border border-border bg-surface text-center space-y-4 shadow-card">
-          <div className="w-14 h-14 rounded-2xl bg-surface-secondary flex items-center justify-center mx-auto text-text-secondary">
-            <Clock className="w-7 h-7" />
-          </div>
+    <div className="min-h-screen bg-[#0B0906] text-[#F5EFE6] py-10 px-4 sm:px-6">
+      <div className="max-w-[1100px] mx-auto space-y-8">
+        {/* Navigation & Page Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h3 className="font-semibold text-text-primary text-base">No orders placed yet</h3>
-            <p className="text-xs text-text-secondary mt-1 max-w-sm mx-auto">
-              Any completed or pending checkout attempts during this session will be preserved here across refreshes.
+            <Link
+              to="/"
+              className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#A39A8C] hover:text-[#FFB020] mb-2 transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Catalogue</span>
+            </Link>
+            <h1 className="text-2xl sm:text-3xl font-bold font-serif text-[#F5EFE6] tracking-tight">Your Order History</h1>
+            <p className="text-xs font-mono text-[#A39A8C] mt-1">
+              Session-scoped purchase history and payment verification records
             </p>
           </div>
-          <Link
-            to="/"
-            className="inline-flex px-5 py-2.5 rounded-xl bg-accent text-white text-xs font-semibold hover:bg-accent-hover transition-colors"
+
+          <button
+            onClick={fetchOrders}
+            className="p-2.5 rounded-xl border border-white/10 bg-white/[0.04] text-[#A39A8C] hover:text-[#F5EFE6] hover:bg-white/[0.08] transition-colors self-start sm:self-auto"
+            title="Refresh orders"
           >
-            Explore Catalogue
-          </Link>
+            <RefreshCw className="w-4 h-4" />
+          </button>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {orders.map((order) => {
-            const isPaid = order.status === 'paid';
-            const isCancelled = order.status === 'cancelled';
-            const isPending = order.status === 'pending';
 
-            return (
-              <div
-                key={order.id}
-                className="p-5 sm:p-6 rounded-3xl border border-border bg-surface shadow-card hover:border-accent/40 transition-all space-y-4"
-              >
-                {/* Order Top Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-border">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-xs sm:text-sm text-text-primary">
-                      {order.id}
-                    </span>
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        isPaid
-                          ? 'bg-emerald-100 text-status-success'
-                          : isCancelled
-                          ? 'bg-amber-100 text-amber-800'
-                          : isPending
-                          ? 'bg-blue-100 text-accent'
-                          : 'bg-red-100 text-status-error'
-                      }`}
-                    >
-                      {order.status}
-                    </span>
-                  </div>
+        {loading ? (
+          <div className="py-20 flex flex-col items-center justify-center space-y-3">
+            <div className="w-8 h-8 rounded-full border-2 border-[#FFB020] border-t-transparent animate-spin" />
+            <p className="text-xs font-mono text-[#A39A8C]">Loading order history...</p>
+          </div>
+        ) : orders.length === 0 ? (
+          <div className="p-12 rounded-3xl glass-card text-center space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center mx-auto text-[#A39A8C]">
+              <Clock className="w-7 h-7" />
+            </div>
+            <div>
+              <h3 className="font-semibold font-serif text-lg text-[#F5EFE6]">No orders placed yet</h3>
+              <p className="text-xs text-[#A39A8C] mt-1 max-w-sm mx-auto leading-relaxed">
+                Any completed or pending checkout attempts during this session will be preserved here across refreshes.
+              </p>
+            </div>
+            <Link
+              to="/"
+              className="inline-flex px-6 py-2.5 rounded-xl btn-amber text-xs font-semibold"
+            >
+              Explore Catalogue
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {orders.map((order) => {
+              const isPaid = order.status === 'paid';
+              const isCancelled = order.status === 'cancelled';
+              const isPending = order.status === 'pending';
 
-                  <span className="text-xs text-text-secondary">
-                    {formatDate(order.createdAt)}
-                  </span>
-                </div>
-
-                {/* Items Snapshot List */}
-                <div className="space-y-2">
-                  {order.items.map((item) => (
-                    <div key={item.id} className="flex items-center justify-between text-xs text-text-secondary">
-                      <span className="text-text-primary font-medium truncate max-w-md">
-                        {item.quantity}× {item.name}
+              return (
+                <div
+                  key={order.id}
+                  className="p-5 sm:p-6 rounded-3xl glass-card space-y-4"
+                >
+                  {/* Order Top Bar */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-white/10">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold text-xs sm:text-sm text-[#F5EFE6]">
+                        {order.id}
                       </span>
-                      <span className="tabular-nums font-semibold text-text-primary">
-                        {formatInr(item.itemTotalInr)}
+                      {/* Status Badges with color + icon + text */}
+                      <span
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider ${
+                          isPaid
+                            ? 'bg-[#4ADE80]/15 text-[#4ADE80] border border-[#4ADE80]/30'
+                            : isCancelled
+                            ? 'bg-white/10 text-[#A39A8C] border border-white/15'
+                            : isPending
+                            ? 'bg-[#FFB020]/15 text-[#FFB020] border border-[#FFB020]/30'
+                            : 'bg-[#F87171]/15 text-[#F87171] border border-[#F87171]/30'
+                        }`}
+                      >
+                        {isPaid && <CheckCircle2 className="w-3 h-3" />}
+                        {isPending && <Clock className="w-3 h-3" />}
+                        {isCancelled && <XCircle className="w-3 h-3" />}
+                        <span>{order.status}</span>
                       </span>
                     </div>
-                  ))}
-                </div>
 
-                {/* Footer Totals & Detail Link */}
-                <div className="pt-3 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="text-xs text-text-secondary flex items-center gap-2">
-                    <span>Charged:</span>
-                    <span className="font-bold text-text-primary tabular-nums">
-                      {formatInr(order.totalInr)}
+                    <span className="text-xs font-mono text-[#A39A8C]">
+                      {formatDate(order.createdAt)}
                     </span>
-                    <span>({formatUsd(order.chargeAmountUsd)} {order.chargeCurrency})</span>
-                    {order.payment?.paypalCaptureId && (
-                      <span className="text-[10px] font-mono text-text-secondary hidden sm:inline">
-                        • Capture: {order.payment.paypalCaptureId}
-                      </span>
-                    )}
                   </div>
 
-                  <Link
-                    to={`/order-confirmation/${order.id}`}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:text-accent-hover transition-colors"
-                  >
-                    <span>View Receipt & Verification</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                  {/* Items Snapshot List */}
+                  <div className="space-y-2 font-mono">
+                    {order.items.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between text-xs text-[#A39A8C]">
+                        <span className="text-[#F5EFE6] font-medium truncate max-w-md font-sans">
+                          {item.quantity}× {item.name}
+                        </span>
+                        <span className="tabular-nums font-semibold text-[#F5EFE6]">
+                          {formatInr(item.itemTotalInr)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Footer Totals & Detail Link */}
+                  <div className="pt-3 border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono">
+                    <div className="text-xs text-[#A39A8C] flex items-center gap-2 flex-wrap">
+                      <span>Charged:</span>
+                      <span className="font-bold text-[#F5EFE6] tabular-nums">
+                        {formatInr(order.totalInr)}
+                      </span>
+                      <span className="text-[#FFB020]">({formatUsd(order.chargeAmountUsd)} {order.chargeCurrency})</span>
+                      {order.payment?.paypalCaptureId && (
+                        <span className="text-[10px] text-[#A39A8C] hidden sm:inline">
+                          • Capture ID: {order.payment.paypalCaptureId}
+                        </span>
+                      )}
+                    </div>
+
+                    <Link
+                      to={`/order-confirmation/${order.id}`}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#FFB020] hover:underline transition-colors"
+                    >
+                      <span>View Receipt & Verification</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
-

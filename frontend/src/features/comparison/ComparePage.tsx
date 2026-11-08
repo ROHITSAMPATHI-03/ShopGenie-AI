@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Scale, ArrowLeft, Plus, Check, ShoppingBag, Zap, Sparkles } from 'lucide-react';
+import { Scale, ArrowLeft, Check, ShoppingBag, Zap, Sparkles } from 'lucide-react';
 import { api, Product, ComparisonResult } from '../../lib/api';
 import { formatInr } from '../../lib/formatters';
 import { Navbar } from '../../components/Navbar';
@@ -60,7 +60,7 @@ export const ComparePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-[#0B0906] text-[#F5EFE6]">
       <Navbar
         cartCount={cart?.itemCount || 0}
         onOpenCart={() => setIsCartOpen(true)}
@@ -68,28 +68,28 @@ export const ComparePage: React.FC = () => {
         onOpenCompare={() => {}}
       />
 
-      <main className="flex-1 max-w-[1360px] w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <main className="flex-1 max-w-[1200px] w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <Link
               to="/"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-text-secondary hover:text-text-primary mb-2 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#A39A8C] hover:text-[#FFB020] mb-2 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Back to Workspace</span>
             </Link>
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold font-serif tracking-tight text-[#F5EFE6]">
               Side-by-Side Product Comparison
             </h1>
-            <p className="text-xs text-text-secondary mt-0.5">
+            <p className="text-xs text-[#A39A8C] mt-1 font-mono">
               Compare 2 to 4 products objectively with deterministic spec analysis
             </p>
           </div>
         </div>
 
         {/* Selected Selector Chips */}
-        <div className="p-4 rounded-2xl bg-surface border border-border space-y-2">
-          <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider block">
+        <div className="p-5 rounded-3xl glass-card space-y-3">
+          <span className="text-xs font-mono font-semibold text-[#A39A8C] uppercase tracking-wider block">
             Select products to compare ({selectedIds.length}/4):
           </span>
           <div className="flex flex-wrap gap-2">
@@ -99,13 +99,13 @@ export const ComparePage: React.FC = () => {
                 <button
                   key={p.id}
                   onClick={() => handleToggleSelect(p.id)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-colors ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-all ${
                     isSelected
-                      ? 'bg-accent text-white border-accent shadow-subtle'
-                      : 'bg-surface-secondary text-text-secondary border-border hover:text-text-primary'
+                      ? 'bg-[#FFB020] text-[#0B0906] border-[#FFB020] shadow-[0_0_12px_rgba(255,176,32,0.35)] font-semibold'
+                      : 'bg-white/[0.04] text-[#A39A8C] border-white/10 hover:text-[#F5EFE6] hover:bg-white/[0.08]'
                   }`}
                 >
-                  {isSelected && <Check className="w-3.5 h-3.5" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 stroke-[2.5]" />}
                   <span>{p.name}</span>
                 </button>
               );
@@ -116,105 +116,115 @@ export const ComparePage: React.FC = () => {
         {/* Comparison Content */}
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center space-y-3">
-            <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-            <p className="text-xs text-text-secondary">Comparing models...</p>
+            <div className="w-8 h-8 rounded-full border-2 border-[#FFB020] border-t-transparent animate-spin" />
+            <p className="text-xs font-mono text-[#A39A8C]">Comparing models...</p>
           </div>
         ) : comparison ? (
           <div className="space-y-6">
             {/* Best Value Banner */}
-            <div className="p-5 rounded-3xl bg-accent-tint/60 border border-accent/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-subtle">
+            <div className="p-5 rounded-3xl bg-[#FFB020]/10 border border-[#FFB020]/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-[0_0_25px_rgba(255,176,32,0.1)]">
               <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-2xl bg-accent text-white shrink-0 mt-0.5">
-                  <Zap className="w-5 h-5" />
+                <div className="p-2.5 rounded-2xl bg-gradient-to-br from-[#FFB020] to-[#FF7A1A] text-[#0B0906] shrink-0 mt-0.5 shadow-sm">
+                  <Zap className="w-5 h-5 fill-current" />
                 </div>
                 <div>
-                  <span className="text-xs uppercase font-bold tracking-wider text-accent block">
+                  <span className="text-xs uppercase font-mono font-bold tracking-wider text-[#FFB020] block">
                     Best Value Analysis
                   </span>
-                  <h3 className="font-bold text-text-primary text-base">
+                  <h3 className="font-bold text-[#F5EFE6] text-base mt-0.5">
                     {comparison.bestValuePick.productName}
                   </h3>
-                  <p className="text-xs text-text-secondary mt-1 max-w-xl leading-relaxed">
+                  <p className="text-xs text-[#A39A8C] mt-1 max-w-xl leading-relaxed">
                     {comparison.bestValuePick.reason}
                   </p>
                 </div>
               </div>
 
               <div className="shrink-0 pl-12 sm:pl-0">
-                <span className="text-xs text-text-secondary block">Price Range</span>
-                <span className="text-base font-bold text-text-primary tabular-nums">
+                <span className="text-[10px] font-mono uppercase text-[#A39A8C] tracking-wider block">Price Range</span>
+                <span className="text-base font-bold font-mono text-[#F5EFE6] tabular-nums">
                   ₹{comparison.priceDifference.minPriceInr.toLocaleString('en-IN')} - ₹{comparison.priceDifference.maxPriceInr.toLocaleString('en-IN')}
                 </span>
               </div>
             </div>
 
             {/* Spec Matrix Table */}
-            <div className="bg-surface rounded-3xl border border-border shadow-card overflow-x-auto">
-              <table className="w-full border-collapse text-xs text-left min-w-[600px]">
-                <thead>
-                  <tr className="bg-surface-secondary/60 border-b border-border">
-                    <th className="p-4 font-semibold text-text-secondary w-1/4">Specification</th>
-                    {comparison.products.map((p) => (
-                      <th key={p.id} className="p-4 font-semibold text-text-primary text-center">
-                        <div className="w-16 h-16 mx-auto mb-2 p-1 rounded-xl bg-surface border border-border/80 flex items-center justify-center">
-                          <img src={p.image_url} alt={p.name} className="w-full h-full object-contain" />
-                        </div>
-                        <div className="font-bold text-sm text-text-primary">{p.name}</div>
-                        <div className="text-accent font-bold tabular-nums text-sm mt-1">
-                          {formatInr(p.price_inr)}
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  <tr className="hover:bg-surface-secondary/20">
-                    <td className="p-4 font-medium text-text-secondary">Rating</td>
-                    {comparison.products.map((p) => (
-                      <td key={p.id} className="p-4 text-center font-bold text-text-primary">
-                        {p.rating} ★
-                      </td>
-                    ))}
-                  </tr>
-
-                  {Object.entries(comparison.specMatrix).map(([specName, values]) => (
-                    <tr key={specName} className="hover:bg-surface-secondary/20">
-                      <td className="p-4 font-medium text-text-secondary capitalize">
-                        {specName.replace(/_/g, ' ')}
-                      </td>
-                      {values.map((v, idx) => (
-                        <td key={idx} className="p-4 text-center text-text-primary font-medium">
-                          {typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v || '—')}
+            <div className="glass-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs text-left min-w-[600px]">
+                  <thead>
+                    <tr className="bg-white/[0.04] border-b border-white/10 font-mono">
+                      <th className="p-4 font-semibold text-[#A39A8C] w-1/4 uppercase tracking-wider text-[11px]">Specification</th>
+                      {comparison.products.map((p) => {
+                        const isBestValue = p.name === comparison.bestValuePick.productName;
+                        return (
+                          <th key={p.id} className={`p-4 font-semibold text-center ${isBestValue ? 'bg-[#FFB020]/5' : ''}`}>
+                            <div className="w-16 h-16 mx-auto mb-2 p-1.5 rounded-2xl bg-white/[0.04] border border-white/10 flex items-center justify-center">
+                              <img src={p.image_url} alt={p.name} className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(255,176,32,0.2)]" />
+                            </div>
+                            <div className="font-bold text-sm text-[#F5EFE6]">{p.name}</div>
+                            <div className="text-[#FFB020] font-bold font-mono tabular-nums text-sm mt-1">
+                              {formatInr(p.price_inr)}
+                            </div>
+                            {isBestValue && (
+                              <span className="inline-block mt-1.5 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#FFB020]/20 text-[#FFB020] border border-[#FFB020]/30">
+                                Best Value
+                              </span>
+                            )}
+                          </th>
+                        );
+                      })}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10 font-mono">
+                    <tr className="hover:bg-white/[0.02]">
+                      <td className="p-4 font-medium text-[#A39A8C]">Rating</td>
+                      {comparison.products.map((p) => (
+                        <td key={p.id} className="p-4 text-center font-bold text-[#F5EFE6]">
+                          <span className="text-[#FFB020]">★</span> {p.rating}
                         </td>
                       ))}
                     </tr>
-                  ))}
 
-                  <tr className="bg-surface-secondary/30">
-                    <td className="p-4 font-medium text-text-secondary">Action</td>
-                    {comparison.products.map((p) => (
-                      <td key={p.id} className="p-4 text-center">
-                        <button
-                          onClick={() => handleAddToCart(p)}
-                          className="px-4 py-2 rounded-xl text-xs font-semibold bg-accent text-white hover:bg-accent-hover shadow-subtle inline-flex items-center gap-1.5 transition-all"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Add to Cart</span>
-                        </button>
-                      </td>
+                    {Object.entries(comparison.specMatrix).map(([specName, values]) => (
+                      <tr key={specName} className="hover:bg-white/[0.02]">
+                        <td className="p-4 font-medium text-[#A39A8C] capitalize">
+                          {specName.replace(/_/g, ' ')}
+                        </td>
+                        {values.map((v, idx) => (
+                          <td key={idx} className="p-4 text-center text-[#F5EFE6] font-medium">
+                            {typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v || '—')}
+                          </td>
+                        ))}
+                      </tr>
                     ))}
-                  </tr>
-                </tbody>
-              </table>
+
+                    <tr className="bg-white/[0.03]">
+                      <td className="p-4 font-medium text-[#A39A8C]">Action</td>
+                      {comparison.products.map((p) => (
+                        <td key={p.id} className="p-4 text-center">
+                          <button
+                            onClick={() => handleAddToCart(p)}
+                            className="px-4 py-2 rounded-xl text-xs font-semibold btn-amber inline-flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                          >
+                            <ShoppingBag className="w-3.5 h-3.5" />
+                            <span>Add to Cart</span>
+                          </button>
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {/* Objective Summary */}
-            <div className="p-5 rounded-3xl bg-surface border border-border shadow-subtle space-y-2">
-              <div className="flex items-center gap-2 text-xs font-bold text-text-secondary uppercase tracking-wider">
-                <Sparkles className="w-4 h-4 text-accent" />
+            <div className="p-5 rounded-3xl glass-card space-y-2">
+              <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#FFB020] uppercase tracking-wider">
+                <Sparkles className="w-4 h-4 text-[#FFB020]" />
                 <span>Deterministic Comparison Summary</span>
               </div>
-              <p className="text-xs text-text-secondary leading-relaxed">
+              <p className="text-xs text-[#F5EFE6] leading-relaxed">
                 {comparison.summary}
               </p>
             </div>
@@ -242,4 +252,3 @@ export const ComparePage: React.FC = () => {
     </div>
   );
 };
-

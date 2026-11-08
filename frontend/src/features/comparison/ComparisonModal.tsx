@@ -37,22 +37,22 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
   if (products.length < 2) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-text-primary/40 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-fade-in">
       <div
-        className="bg-surface w-full max-w-5xl rounded-3xl border border-border shadow-modal overflow-hidden flex flex-col max-h-[92vh] animate-scale-up"
+        className="glass-panel w-full max-w-5xl rounded-3xl border border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[92vh] animate-scale-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-accent-tint text-accent flex items-center justify-center">
+        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#FFB020] to-[#FF7A1A] text-[#0B0906] flex items-center justify-center shadow-[0_0_12px_rgba(255,176,32,0.3)]">
               <Scale className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-text-primary tracking-tight">
+              <h2 className="text-base sm:text-lg font-bold text-[#F5EFE6] tracking-tight">
                 Product Specification Comparison
               </h2>
-              <span className="text-xs text-text-secondary">
+              <span className="text-xs font-mono text-[#A39A8C]">
                 Comparing {products.length} models side-by-side
               </span>
             </div>
@@ -60,7 +60,7 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-surface-secondary transition-colors"
+            className="p-2 rounded-xl text-[#A39A8C] hover:text-[#F5EFE6] hover:bg-white/[0.06] transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -70,79 +70,87 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-6">
           {loading ? (
             <div className="py-16 flex flex-col items-center justify-center space-y-3">
-              <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
-              <p className="text-xs text-text-secondary">Aligning specifications and evaluating trade-offs...</p>
+              <div className="w-8 h-8 rounded-full border-2 border-[#FFB020] border-t-transparent animate-spin" />
+              <p className="text-xs font-mono text-[#A39A8C]">Aligning specifications and evaluating trade-offs...</p>
             </div>
           ) : error ? (
-            <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-status-error text-sm">
+            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-[#F87171] text-sm">
               {error}
             </div>
           ) : comparisonData ? (
             <>
               {/* Best Value Highlight Banner */}
-              <div className="p-4 rounded-2xl bg-accent-tint/60 border border-accent/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-2.5">
-                  <div className="p-2 rounded-xl bg-accent text-white shrink-0 mt-0.5">
-                    <Zap className="w-4 h-4" />
+              <div className="p-4 sm:p-5 rounded-2xl bg-[#FFB020]/10 border border-[#FFB020]/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-[0_0_25px_rgba(255,176,32,0.1)]">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-gradient-to-br from-[#FFB020] to-[#FF7A1A] text-[#0B0906] shrink-0 mt-0.5 shadow-sm">
+                    <Zap className="w-4 h-4 fill-current" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs uppercase font-bold tracking-wider text-accent">
+                      <span className="text-xs uppercase font-mono font-bold tracking-wider text-[#FFB020]">
                         Best Value Pick
                       </span>
-                      <span className="font-semibold text-text-primary text-sm">
+                      <span className="font-semibold text-[#F5EFE6] text-sm">
                         {comparisonData.bestValuePick.productName}
                       </span>
                     </div>
-                    <p className="text-xs text-text-secondary mt-0.5 leading-relaxed">
+                    <p className="text-xs text-[#A39A8C] mt-1 leading-relaxed">
                       {comparisonData.bestValuePick.reason}
                     </p>
                   </div>
                 </div>
 
-                <div className="shrink-0 pl-10 sm:pl-0">
-                  <span className="text-xs text-text-secondary block">Price Difference</span>
-                  <span className="text-sm font-bold text-text-primary tabular-nums">
+                <div className="shrink-0 pl-11 sm:pl-0">
+                  <span className="text-[10px] font-mono uppercase text-[#A39A8C] tracking-wider block">Price Difference</span>
+                  <span className="text-sm font-bold font-mono text-[#F5EFE6] tabular-nums">
                     ₹{comparisonData.priceDifference.differenceInr.toLocaleString('en-IN')} spread
                   </span>
                 </div>
               </div>
 
               {/* Responsive Spec Comparison Table */}
-              <div className="border border-border rounded-2xl overflow-x-auto">
+              <div className="border border-white/10 rounded-2xl overflow-x-auto bg-white/[0.02]">
                 <table className="w-full border-collapse text-xs text-left min-w-[550px]">
                   <thead>
-                    <tr className="bg-surface-secondary/60 border-b border-border">
-                      <th className="p-3.5 font-semibold text-text-secondary w-1/4">Feature / Metric</th>
-                      {comparisonData.products.map((p) => (
-                        <th key={p.id} className="p-3.5 font-semibold text-text-primary text-center">
-                          <div className="font-bold text-sm mb-1">{p.name}</div>
-                          <div className="text-accent font-bold tabular-nums text-sm">
-                            {formatInr(p.price_inr)}
-                          </div>
-                        </th>
-                      ))}
+                    <tr className="bg-white/[0.04] border-b border-white/10">
+                      <th className="p-3.5 font-mono font-semibold text-[#A39A8C] w-1/4 uppercase tracking-wider text-[11px]">Feature / Metric</th>
+                      {comparisonData.products.map((p) => {
+                        const isBestValue = p.name === comparisonData.bestValuePick.productName;
+                        return (
+                          <th key={p.id} className={`p-3.5 font-semibold text-center ${isBestValue ? 'bg-[#FFB020]/5' : ''}`}>
+                            <div className="font-bold text-sm text-[#F5EFE6] mb-1">{p.name}</div>
+                            <div className="text-[#FFB020] font-bold font-mono tabular-nums text-sm">
+                              {formatInr(p.price_inr)}
+                            </div>
+                            {isBestValue && (
+                              <span className="inline-block mt-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#FFB020]/20 text-[#FFB020] border border-[#FFB020]/30">
+                                Best Value
+                              </span>
+                            )}
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-white/10 font-mono">
                     {/* Rating row */}
-                    <tr className="hover:bg-surface-secondary/20">
-                      <td className="p-3.5 font-medium text-text-secondary">Rating</td>
+                    <tr className="hover:bg-white/[0.02]">
+                      <td className="p-3.5 font-medium text-[#A39A8C]">Rating</td>
                       {comparisonData.products.map((p) => (
-                        <td key={p.id} className="p-3.5 text-center font-semibold text-text-primary">
-                          {p.rating} ★
+                        <td key={p.id} className="p-3.5 text-center font-semibold text-[#F5EFE6]">
+                          <span className="text-[#FFB020]">★</span> {p.rating}
                         </td>
                       ))}
                     </tr>
 
                     {/* Dynamic Specs Matrix */}
                     {Object.entries(comparisonData.specMatrix).map(([specName, values]) => (
-                      <tr key={specName} className="hover:bg-surface-secondary/20">
-                        <td className="p-3.5 font-medium text-text-secondary capitalize">
+                      <tr key={specName} className="hover:bg-white/[0.02]">
+                        <td className="p-3.5 font-medium text-[#A39A8C] capitalize">
                           {specName.replace(/_/g, ' ')}
                         </td>
                         {values.map((v, idx) => (
-                          <td key={idx} className="p-3.5 text-center text-text-primary font-medium">
+                          <td key={idx} className="p-3.5 text-center text-[#F5EFE6] font-medium">
                             {typeof v === 'boolean' ? (v ? 'Yes' : 'No') : String(v || '—')}
                           </td>
                         ))}
@@ -150,8 +158,8 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
                     ))}
 
                     {/* Action Row */}
-                    <tr className="bg-surface-secondary/30">
-                      <td className="p-3.5 font-medium text-text-secondary">Quick Purchase</td>
+                    <tr className="bg-white/[0.03]">
+                      <td className="p-3.5 font-medium text-[#A39A8C]">Quick Purchase</td>
                       {comparisonData.products.map((p) => (
                         <td key={p.id} className="p-3.5 text-center">
                           <button
@@ -159,7 +167,7 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
                               onAddToCart(p);
                               onClose();
                             }}
-                            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-accent text-white hover:bg-accent-hover shadow-subtle inline-flex items-center gap-1.5 transition-all"
+                            className="px-3.5 py-2 rounded-xl text-xs font-semibold btn-amber inline-flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
                           >
                             <ShoppingBag className="w-3.5 h-3.5" />
                             <span>Add to Cart</span>
@@ -172,12 +180,12 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
               </div>
 
               {/* Grounded Summary */}
-              <div className="p-4 rounded-2xl bg-surface-secondary/50 border border-border">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-text-secondary uppercase tracking-wider mb-1">
-                  <Sparkles className="w-3.5 h-3.5 text-accent" />
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10">
+                <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-[#FFB020] uppercase tracking-wider mb-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-[#FFB020]" />
                   <span>Objective Shopping Summary</span>
                 </div>
-                <p className="text-xs text-text-secondary leading-relaxed">
+                <p className="text-xs text-[#F5EFE6] leading-relaxed">
                   {comparisonData.summary}
                 </p>
               </div>
@@ -188,4 +196,3 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
     </div>
   );
 };
-
