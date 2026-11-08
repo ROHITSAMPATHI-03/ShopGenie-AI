@@ -4,13 +4,16 @@
   "private": true,
   "description": "ShopGenie AI - Think Smart. Shop Better. Pay Smarter.",
   "scripts": {
+    "install:all": "npm install && npm install --prefix backend && npm install --prefix frontend",
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
-    "dev": "npm run dev:backend",
-    "build": "npm run build --prefix backend && npm run build --prefix frontend",
-    "test": "npm test --prefix backend",
+    "dev:all": "concurrently -k -n \"backend,frontend\" -c \"yellow,cyan\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev": "npm run dev:all",
     "seed": "npm run seed --prefix backend",
-    "install:all": "npm install --prefix backend && npm install --prefix frontend"
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "test": "npm test --prefix backend"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.7"
   }
 }
-

@@ -43,13 +43,17 @@ An AI-powered autonomous shopping assistant with intelligent product discovery, 
 git clone https://github.com/your-username/ShopGenie-AI.git
 cd ShopGenie-AI
 
-# Install all dependencies (frontend & backend)
+# Install all dependencies (root, frontend & backend)
 npm run install:all
 ```
 
 ### 3. Environment Setup
 Copy `.env.example` to `.env`:
 ```bash
+# Windows PowerShell
+Copy-Item .env.example .env
+
+# macOS / Linux
 cp .env.example .env
 ```
 
@@ -57,7 +61,7 @@ Configure your credentials in `.env`:
 ```env
 # Gemini API Key (Optional for basic discovery; deterministic fallback active if omitted)
 GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-3.5-flash-lite
 
 # PayPal Sandbox Credentials (Required for live Sandbox popup approval)
 PAYPAL_CLIENT_ID=your_paypal_sandbox_client_id
@@ -81,10 +85,10 @@ Populates the database with 28 curated products across 5 categories:
 npm run seed
 ```
 
-### 5. Start Development
+### 5. Start Development (Single-Command Startup)
 ```bash
-# Starts both Backend (port 4000) and Frontend (port 5173 with /api proxy)
-npm run dev
+# Starts both Backend (port 4000 with node --watch) and Frontend (port 5173 with Vite /api proxy) concurrently:
+npm run dev:all
 ```
 
 Open your browser to: **[http://localhost:5173](http://localhost:5173)**
@@ -95,9 +99,14 @@ Open your browser to: **[http://localhost:5173](http://localhost:5173)**
 
 | Command | Action |
 | :--- | :--- |
-| `npm run dev` | Starts backend development server (`tsx watch`) |
-| `npm run dev:frontend` | Starts Vite frontend dev server |
+| `npm run dev:all` | **Single-command startup**: runs backend & frontend concurrently via `concurrently` |
+| `npm run dev` | Alias for `npm run dev:all` |
+| `npm run dev:backend` | Starts backend development server (`node --watch`) |
+| `npm run dev:frontend` | Starts Vite frontend dev server on port 5173 |
 | `npm run build` | Compiles backend TypeScript and builds production Vite frontend |
+| `npm run test` | Runs the Vitest automated test suite (20 tests) |
+| `npm run seed` | Seeds or updates the 28 products catalogue in SQLite |
+| `npm run install:all` | Installs root, backend, and frontend dependencies in one step |
 | `npm run test` | Runs the Vitest automated test suite |
 | `npm run seed` | Seeds or updates the 28 products catalogue in SQLite |
 
