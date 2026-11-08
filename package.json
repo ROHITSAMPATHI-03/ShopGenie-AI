@@ -1,0 +1,16 @@
+{
+  "name": "shopgenie-ai-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ShopGenie AI - Think Smart. Shop Better. Pay Smarter.",
+  "scripts": {
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev": "npm run dev:backend",
+    "build": "npm run build --prefix backend && npm run build --prefix frontend",
+    "test": "npm test --prefix backend",
+    "seed": "npm run seed --prefix backend",
+    "install:all": "npm install --prefix backend && npm install --prefix frontend"
+  }
+}
+
