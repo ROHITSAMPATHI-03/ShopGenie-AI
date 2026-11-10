@@ -66,6 +66,7 @@ GEMINI_MODEL=gemini-3.5-flash-lite
 # PayPal Sandbox Credentials (Required for live Sandbox popup approval)
 PAYPAL_CLIENT_ID=your_paypal_sandbox_client_id
 PAYPAL_CLIENT_SECRET=your_paypal_sandbox_client_secret
+PAYPAL_WEBHOOK_ID=your_paypal_sandbox_webhook_id
 PAYPAL_ENV=sandbox
 
 # Currency & Rates
@@ -112,9 +113,48 @@ Open your browser to: **[http://localhost:5173](http://localhost:5173)**
 
 ---
 
+## Local PayPal Webhook Testing (Zero Cloud Hosting Needed)
+
+The backend exposes `POST /api/paypal/webhook` with cryptographic signature verification and deduplication. To test real-time webhooks locally without deploying to any cloud host:
+
+### Step 1: Start a Local Secure Tunnel
+Use `ngrok` or `cloudflared` to expose your local backend port (`4000`):
+```bash
+# Using ngrok
+ngrok http 4000
+
+# Or using Cloudflare Tunnel
+cloudflared tunnel --url http://localhost:4000
+```
+Note the HTTPS forwarding URL (e.g. `https://your-tunnel-id.ngrok-free.app`).
+
+### Step 2: Register Webhook in PayPal Developer Dashboard
+1. Log in to [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/).
+2. Navigate to **Apps & Credentials** > Select your Sandbox App.
+3. Under **Webhooks**, click **Add Webhook**.
+4. Set **Webhook URL** to: `https://your-tunnel-id.ngrok-free.app/api/paypal/webhook`
+5. Select the following event types:
+   - `Checkout order approved` (`CHECKOUT.ORDER.APPROVED`)
+   - `Payment capture completed` (`PAYMENT.CAPTURE.COMPLETED`)
+   - `Payment capture pending` (`PAYMENT.CAPTURE.PENDING`)
+   - `Payment capture denied` (`PAYMENT.CAPTURE.DENIED`)
+   - `Payment capture refunded` (`PAYMENT.CAPTURE.REFUNDED`)
+   - `Payment capture reversed` (`PAYMENT.CAPTURE.REVERSED`)
+6. Save the webhook and copy the generated **Webhook ID**.
+7. Paste this Webhook ID into your local `.env`:
+   ```env
+   PAYPAL_WEBHOOK_ID=your_webhook_id_here
+   ```
+
+### Step 3: Test via Webhook Simulator & Real Sandbox Payment
+1. **Webhook Simulator**: In PayPal Developer Dashboard > **Webhooks Simulator**, select your Webhook URL, choose `Payment capture completed`, and click **Send test**. Check your backend terminal to verify delivery, cryptographic signature check, and deduplication logging.
+2. **Real Sandbox Payment**: Perform a test purchase via the ShopGenie frontend using Sandbox buyer credentials. The server captures and verifies the payment, marks the order `paid`, and safely processes any parallel or asynchronous webhooks idempotently without duplicate stock decrements.
+
+---
+
 ## Verification & Test Suite
 
-ShopGenie AI comes with 18 automated tests covering discovery, cart math, PayPal order lifecycles, and security invariants:
+ShopGenie AI comes with 25 automated tests covering discovery, cart math, PayPal order lifecycles, webhooks, and security invariants:
 
 ```bash
 npm test

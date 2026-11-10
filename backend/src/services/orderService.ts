@@ -216,11 +216,11 @@ export class OrderService {
     return { paypalOrderId: created.id };
   }
 
-  static async capturePayPalPayment(sessionId: string, paypalOrderId: string, orderId: string): Promise<OrderDto> {
+  static async capturePayPalPayment(sessionId: string | null | undefined, paypalOrderId: string, orderId: string): Promise<OrderDto> {
     const db = getDatabase();
 
     // 1. Ownership & existence verification
-    const order = this.getOrderById(orderId, sessionId);
+    const order = sessionId ? this.getOrderById(orderId, sessionId) : this.getOrderById(orderId);
     if (!order) {
       throw new Error('Order not found or authorization failed');
     }
@@ -272,37 +272,160 @@ export class OrderService {
       throw new Error('Payment capture verification failed: amount, currency, or status mismatch');
     }
 
-    // 6. Verification Passed! Mark order paid and clear only purchased items from cart
-    const finalizeTransaction = db.transaction(() => {
-      db.prepare(`
-        UPDATE payments
-        SET 
-          paypal_capture_id = ?,
-          status = 'COMPLETED',
-          raw_status = ?,
-          updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).run(captureResult.captureId, captureResult.status, payment.id);
+    // 6. Verification Passed! Mark order paid using shared idempotent markPaid
+    return this.markPaid(orderId, captureResult.captureId, captureResult.status);
+  }
 
+  static getOrderByPayPalOrderId(paypalOrderId: string): OrderDto | null {
+    const db = getDatabase();
+    const payment = db.prepare('SELECT order_id FROM payments WHERE paypal_order_id = ?').get(paypalOrderId) as any;
+    if (!payment) return null;
+    return this.getOrderById(payment.order_id);
+  }
+
+  static getOrderByPayPalCaptureId(paypalCaptureId: string): OrderDto | null {
+    const db = getDatabase();
+    const payment = db.prepare('SELECT order_id FROM payments WHERE paypal_capture_id = ?').get(paypalCaptureId) as any;
+    if (!payment) return null;
+    return this.getOrderById(payment.order_id);
+  }
+
+  /**
+   * Idempotent markPaid function shared between the direct capture endpoint and webhooks.
+   * Safe to call multiple times with the same captureId (no double stock decrements, no duplicate cart clearing).
+   */
+  static markPaid(orderId: string, captureId: string, rawStatus: string = 'COMPLETED'): OrderDto {
+    const db = getDatabase();
+    const order = this.getOrderById(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    // Idempotency: if already marked paid, return stored snapshot without mutating stock again
+    if (order.status === 'paid') {
+      return order;
+    }
+
+    const finalizeTransaction = db.transaction(() => {
+      // Re-verify current status inside transaction for concurrency safety
+      const current = db.prepare('SELECT status FROM orders WHERE id = ?').get(orderId) as any;
+      if (current?.status === 'paid') {
+        return;
+      }
+
+      // 1. Update payments table (or record payment if called directly)
+      const existingPayment = db.prepare('SELECT id FROM payments WHERE order_id = ?').get(orderId);
+      if (existingPayment) {
+        db.prepare(`
+          UPDATE payments
+          SET 
+            paypal_capture_id = ?,
+            status = 'COMPLETED',
+            raw_status = ?,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE order_id = ?
+        `).run(captureId, rawStatus, orderId);
+      } else {
+        db.prepare(`
+          INSERT INTO payments (id, order_id, paypal_order_id, paypal_capture_id, idempotency_key, status, raw_status, amount_cents, currency)
+          VALUES (?, ?, ?, ?, ?, 'COMPLETED', ?, ?, ?)
+        `).run(
+          `pay_${Date.now()}`,
+          orderId,
+          `PAYPAL-${orderId}`,
+          captureId,
+          `idemp_${orderId}`,
+          rawStatus,
+          order.chargeAmountUsdCents,
+          order.chargeCurrency
+        );
+      }
+
+      // 2. Update orders table to 'paid'
       db.prepare(`
         UPDATE orders
         SET status = 'paid', updated_at = CURRENT_TIMESTAMP
         WHERE id = ?
       `).run(orderId);
 
-      // Decrement stock for purchased products
+      // 3. Decrement stock for purchased items
       for (const item of order.items) {
         db.prepare('UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?')
           .run(item.quantity, item.productId);
       }
 
-      // Remove purchased items from session cart
-      CartService.clearCart(sessionId);
+      // 4. Clear cart for this order's session
+      CartService.clearCart(order.sessionId);
     });
 
     finalizeTransaction();
 
-    return this.getOrderById(orderId, sessionId)!;
+    return this.getOrderById(orderId)!;
+  }
+
+  static markFailed(orderId: string, reason?: string): OrderDto {
+    const db = getDatabase();
+    const order = this.getOrderById(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    // Never overwrite an already paid order
+    if (order.status === 'paid') {
+      return order;
+    }
+
+    db.prepare(`
+      UPDATE orders
+      SET status = 'failed', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(orderId);
+
+    if (reason) {
+      db.prepare(`
+        UPDATE payments
+        SET status = 'FAILED', raw_status = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE order_id = ?
+      `).run(reason, orderId);
+    }
+
+    return this.getOrderById(orderId)!;
+  }
+
+  static markPending(orderId: string): OrderDto {
+    const db = getDatabase();
+    const order = this.getOrderById(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    if (order.status === 'paid') {
+      return order;
+    }
+
+    db.prepare(`
+      UPDATE orders
+      SET status = 'pending', updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(orderId);
+
+    return this.getOrderById(orderId)!;
+  }
+
+  static markRefunded(orderId: string): OrderDto {
+    const db = getDatabase();
+    const order = this.getOrderById(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    db.prepare("UPDATE orders SET status = 'refunded', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .run(orderId);
+
+    db.prepare("UPDATE payments SET status = 'REFUNDED', raw_status = 'REFUNDED', updated_at = CURRENT_TIMESTAMP WHERE order_id = ?")
+      .run(orderId);
+
+    return this.getOrderById(orderId)!;
   }
 
   static cancelOrder(sessionId: string, orderId: string): OrderDto {

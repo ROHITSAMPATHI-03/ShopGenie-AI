@@ -18,6 +18,7 @@ const chatRateLimiter = rateLimit({
 
 const chatRequestSchema = z.object({
   message: z.string().min(1).max(1000), // Bounded message length (SEC-11)
+  conversationId: z.string().min(1).max(100).optional(),
 });
 
 aiRouter.post('/chat', chatRateLimiter, async (req: any, res: Response) => {
@@ -29,8 +30,8 @@ aiRouter.post('/chat', chatRateLimiter, async (req: any, res: Response) => {
       return;
     }
 
-    const { message } = parsed.data;
-    const response = await AgentService.handleUserMessage(authReq.sessionId, message);
+    const { message, conversationId } = parsed.data;
+    const response = await AgentService.handleUserMessage(authReq.sessionId, message, conversationId);
     res.json(response);
   } catch (error: any) {
     console.error('[AI Chat Route Error]', error);
@@ -38,17 +39,49 @@ aiRouter.post('/chat', chatRateLimiter, async (req: any, res: Response) => {
   }
 });
 
-// History endpoint for current session
+const resetRequestSchema = z.object({
+  conversationId: z.string().min(1).max(100).optional(),
+});
+
+aiRouter.post('/reset', (req: any, res: Response) => {
+  try {
+    const authReq = req as AuthenticatedRequest;
+    const parsed = resetRequestSchema.safeParse(req.body);
+    const conversationId = parsed.success ? parsed.data.conversationId : undefined;
+
+    AgentService.resetConversation(authReq.sessionId, conversationId);
+    res.json({
+      success: true,
+      message: 'Conversation reset. Your cart is kept.',
+      sessionId: authReq.sessionId,
+      conversationId,
+    });
+  } catch (error: any) {
+    console.error('[AI Reset Route Error]', error);
+    res.status(500).json({ error: 'Failed to reset conversation' });
+  }
+});
+
+// History endpoint for current session (filterable by conversationId)
 aiRouter.get('/history', (req: any, res: Response) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const db = getDatabase();
-    const rows = db.prepare(`
-      SELECT id, role, content, metadata_json, created_at
-      FROM conversations
-      WHERE session_id = ?
-      ORDER BY created_at ASC
-    `).all(authReq.sessionId);
+    const conversationId = typeof req.query?.conversationId === 'string' ? req.query.conversationId : undefined;
+
+    const rows = conversationId
+      ? db.prepare(`
+          SELECT id, role, content, metadata_json, created_at
+          FROM conversations
+          WHERE session_id = ? AND conversation_id = ?
+          ORDER BY created_at ASC
+        `).all(authReq.sessionId, conversationId)
+      : db.prepare(`
+          SELECT id, role, content, metadata_json, created_at
+          FROM conversations
+          WHERE session_id = ?
+          ORDER BY created_at ASC
+        `).all(authReq.sessionId);
 
     res.json({ messages: rows });
   } catch (error: any) {

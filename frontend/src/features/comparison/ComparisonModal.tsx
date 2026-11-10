@@ -37,19 +37,24 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
   if (products.length < 2) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-fade-in">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="comparison-dialog-title"
+    >
       <div
         className="glass-panel w-full max-w-5xl rounded-3xl border border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col max-h-[92vh] animate-scale-up"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+        <div className="px-5 sm:px-6 py-4 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#FFB020] to-[#FF7A1A] text-[#0B0906] flex items-center justify-center shadow-[0_0_12px_rgba(255,176,32,0.3)]">
               <Scale className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold text-[#F5EFE6] tracking-tight">
+              <h2 id="comparison-dialog-title" className="text-base sm:text-lg font-bold text-[#F5EFE6] tracking-tight">
                 Product Specification Comparison
               </h2>
               <span className="text-xs font-mono text-[#A39A8C]">
@@ -60,7 +65,8 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-[#A39A8C] hover:text-[#F5EFE6] hover:bg-white/[0.06] transition-colors"
+            aria-label="Close comparison dialog"
+            className="min-w-[44px] min-h-[44px] p-2.5 rounded-xl text-[#A39A8C] hover:text-[#F5EFE6] hover:bg-white/[0.06] transition-colors flex items-center justify-center"
           >
             <X className="w-5 h-5" />
           </button>
@@ -167,7 +173,8 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({
                               onAddToCart(p);
                               onClose();
                             }}
-                            className="px-3.5 py-2 rounded-xl text-xs font-semibold btn-amber inline-flex items-center gap-1.5 transition-all shadow-sm active:scale-95"
+                            aria-label={`Add ${p.name} to cart`}
+                            className="px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-semibold btn-amber inline-flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95"
                           >
                             <ShoppingBag className="w-3.5 h-3.5" />
                             <span>Add to Cart</span>

@@ -10,7 +10,7 @@ import { productRouter } from './routes/productRoutes.js';
 import { compareRouter } from './routes/compareRoutes.js';
 import { cartRouter } from './routes/cartRoutes.js';
 import { orderRouter } from './routes/orderRoutes.js';
-import { paymentRouter } from './routes/paymentRoutes.js';
+import { paymentRouter, handlePayPalWebhook } from './routes/paymentRoutes.js';
 import { aiRouter } from './routes/aiRoutes.js';
 
 export const app = express();
@@ -33,12 +33,19 @@ app.use(
   })
 );
 
-// 3. Body Parsing with bounds
+// 3. PayPal Webhook (Registered BEFORE express.json() with raw parser for signature verification)
+app.post(
+  '/api/paypal/webhook',
+  express.raw({ type: 'application/json' }),
+  handlePayPalWebhook
+);
+
+// 4. Body Parsing with bounds
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser(env.SESSION_SECRET));
 
-// 4. Session Identification
+// 5. Session Identification
 app.use(sessionMiddleware);
 
 // 5. Health Check

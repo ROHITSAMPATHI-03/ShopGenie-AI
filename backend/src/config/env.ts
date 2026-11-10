@@ -28,6 +28,7 @@ const envSchema = z.object({
   // PayPal config
   PAYPAL_CLIENT_ID: z.string().optional().default(''),
   PAYPAL_CLIENT_SECRET: z.string().optional().default(''),
+  PAYPAL_WEBHOOK_ID: z.string().optional().default(''),
   PAYPAL_ENV: z.enum(['sandbox', 'live']).default('sandbox'),
   
   // Currency & Rate config

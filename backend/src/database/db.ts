@@ -148,6 +148,14 @@ export function getDatabase(): ISqliteDatabase {
   db.pragma('foreign_keys = ON');
   db.pragma('busy_timeout = 5000');
 
+  // Safe column migration for existing tables before executing schema
+  try {
+    const tableInfo = db.prepare("PRAGMA table_info(conversations)").all() as any[];
+    if (tableInfo && tableInfo.length > 0 && !tableInfo.some(col => col.name === 'conversation_id')) {
+      db.exec('ALTER TABLE conversations ADD COLUMN conversation_id TEXT;');
+    }
+  } catch {}
+
   // Initialize schema
   let schemaPath = path.resolve(__dirname, 'schema.sql');
   if (!fs.existsSync(schemaPath)) {

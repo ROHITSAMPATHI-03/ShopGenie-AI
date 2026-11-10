@@ -87,6 +87,8 @@ export class PayPalService {
         brand_name: 'ShopGenie AI',
         landing_page: 'NO_PREFERENCE',
         user_action: 'PAY_NOW',
+        return_url: `${env.FRONTEND_ORIGIN}/order-confirmation/${orderId}`,
+        cancel_url: `${env.FRONTEND_ORIGIN}/checkout`,
       },
     };
 
@@ -149,6 +151,81 @@ export class PayPalService {
       currency,
       debugId,
     };
+  }
+
+  static async verifyWebhookSignature(
+    headers: Record<string, string | string[] | undefined>,
+    rawBody: string
+  ): Promise<boolean> {
+    const getHeader = (name: string): string | undefined => {
+      const val = headers[name.toLowerCase()] || headers[name.toUpperCase()] || headers[name];
+      return Array.isArray(val) ? val[0] : val;
+    };
+
+    // Test environment signature bypass hook for unit tests
+    if (env.NODE_ENV === 'test' && getHeader('x-test-bypass-signature') === 'true') {
+      return true;
+    }
+
+    const webhookId = env.PAYPAL_WEBHOOK_ID?.trim();
+    if (!webhookId) {
+      console.warn('[PayPal Webhook] PAYPAL_WEBHOOK_ID is not configured in environment variables');
+      return false;
+    }
+
+    const authAlgo = getHeader('paypal-auth-algo');
+    const certUrl = getHeader('paypal-cert-url');
+    const transmissionId = getHeader('paypal-transmission-id');
+    const transmissionSig = getHeader('paypal-transmission-sig');
+    const transmissionTime = getHeader('paypal-transmission-time');
+
+    if (!authAlgo || !certUrl || !transmissionId || !transmissionSig || !transmissionTime) {
+      console.warn('[PayPal Webhook] Missing required PayPal transmission signature headers');
+      return false;
+    }
+
+    let webhookEvent: any;
+    try {
+      webhookEvent = JSON.parse(rawBody);
+    } catch {
+      console.warn('[PayPal Webhook] Failed to parse webhook event JSON');
+      return false;
+    }
+
+    try {
+      const accessToken = await this.getAccessToken();
+
+      const verifyPayload = {
+        auth_algo: authAlgo,
+        cert_url: certUrl,
+        transmission_id: transmissionId,
+        transmission_sig: transmissionSig,
+        transmission_time: transmissionTime,
+        webhook_id: webhookId,
+        webhook_event: webhookEvent,
+      };
+
+      const response = await fetch(`${this.getBaseUrl()}/v1/notifications/verify-webhook-signature`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(verifyPayload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[PayPal Verify Signature Error]', response.status, errorText);
+        return false;
+      }
+
+      const result = await response.json();
+      return result.verification_status === 'SUCCESS';
+    } catch (err: any) {
+      console.error('[PayPal Webhook Verification Exception]', err.message);
+      return false;
+    }
   }
 }
 

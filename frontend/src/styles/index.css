@@ -184,3 +184,50 @@
     transform: none !important;
   }
 }
+
+/* Print-specific receipt styles */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 1.2cm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .no-print,
+  nav,
+  footer,
+  aside,
+  button,
+  .btn-amber,
+  .btn-outline-amber {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .screen-only {
+    display: none !important;
+  }
+
+  .glass-card,
+  .glass-panel {
+    background: #ffffff !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    color: #000000 !important;
+    padding: 0 !important;
+  }
+}
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}

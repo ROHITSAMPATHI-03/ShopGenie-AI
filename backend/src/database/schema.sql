@@ -100,6 +100,7 @@ CREATE INDEX IF NOT EXISTS idx_payments_idempotency ON payments(idempotency_key)
 CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
+  conversation_id TEXT,
   role TEXT NOT NULL CHECK(role IN ('user', 'assistant', 'system')),
   content TEXT NOT NULL,
   metadata_json TEXT DEFAULT '{}',
@@ -108,4 +109,15 @@ CREATE TABLE IF NOT EXISTS conversations (
 );
 
 CREATE INDEX IF NOT EXISTS idx_conversations_session ON conversations(session_id);
+CREATE INDEX IF NOT EXISTS idx_conversations_conv_id ON conversations(conversation_id);
+
+-- 8. Webhook Events & Idempotent Deduplication
+CREATE TABLE IF NOT EXISTS webhook_events (
+  id TEXT PRIMARY KEY,
+  event_type TEXT NOT NULL,
+  received_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_events_type ON webhook_events(event_type);
+
 

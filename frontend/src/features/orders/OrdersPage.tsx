@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, ShoppingBag, ArrowRight, CheckCircle2, XCircle, AlertCircle, RefreshCw, ArrowLeft } from 'lucide-react';
+import { Clock, ShoppingBag, ArrowRight, CheckCircle2, XCircle, AlertCircle, RefreshCw, ArrowLeft, Printer } from 'lucide-react';
 import { api, Order } from '../../lib/api';
 import { formatInr, formatUsd, formatDate } from '../../lib/formatters';
 
@@ -31,13 +31,22 @@ export const OrdersPage: React.FC = () => {
         {/* Navigation & Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#A39A8C] hover:text-[#FFB020] mb-2 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back to Catalogue</span>
-            </Link>
+            <div className="flex items-center gap-3 mb-2">
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 text-xs font-mono font-semibold text-[#A39A8C] hover:text-[#FFB020] transition-colors min-h-[44px] py-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Home</span>
+              </Link>
+              <span className="text-white/20">•</span>
+              <Link
+                to="/products"
+                className="text-xs font-mono text-[#A39A8C] hover:text-[#FFB020] transition-colors"
+              >
+                Catalogue
+              </Link>
+            </div>
             <h1 className="text-2xl sm:text-3xl font-bold font-serif text-[#F5EFE6] tracking-tight">Your Order History</h1>
             <p className="text-xs font-mono text-[#A39A8C] mt-1">
               Session-scoped purchase history and payment verification records
@@ -46,7 +55,8 @@ export const OrdersPage: React.FC = () => {
 
           <button
             onClick={fetchOrders}
-            className="p-2.5 rounded-xl border border-white/10 bg-white/[0.04] text-[#A39A8C] hover:text-[#F5EFE6] hover:bg-white/[0.08] transition-colors self-start sm:self-auto"
+            aria-label="Refresh orders"
+            className="min-w-[44px] min-h-[44px] p-2.5 rounded-xl border border-white/10 bg-white/[0.04] text-[#A39A8C] hover:text-[#F5EFE6] hover:bg-white/[0.08] transition-colors flex items-center justify-center self-start sm:self-auto"
             title="Refresh orders"
           >
             <RefreshCw className="w-4 h-4" />
@@ -149,9 +159,10 @@ export const OrdersPage: React.FC = () => {
 
                     <Link
                       to={`/order-confirmation/${order.id}`}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#FFB020] hover:underline transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#FFB020] hover:underline transition-colors min-h-[44px] py-1"
                     >
-                      <span>View Receipt & Verification</span>
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Print Receipt & Verification</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>

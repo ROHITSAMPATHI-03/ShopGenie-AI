@@ -83,8 +83,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               e.stopPropagation();
               onToggleCompare(product);
             }}
+            aria-label={isCompared ? `Remove ${product.name} from comparison` : `Add ${product.name} to comparison`}
             title={isCompared ? 'Remove from comparison' : 'Compare product'}
-            className={`p-1.5 rounded-lg border transition-all ${
+            className={`min-w-[44px] min-h-[44px] p-2.5 rounded-xl border flex items-center justify-center transition-all ${
               isCompared
                 ? 'bg-[#FFB020] text-[#0B0906] border-[#FFB020] shadow-[0_0_12px_rgba(255,176,32,0.4)]'
                 : 'border-white/10 text-[#A39A8C] hover:text-[#F5EFE6] hover:bg-white/[0.06] hover:border-white/20'
@@ -159,7 +160,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={(e) => {
@@ -167,7 +168,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               onViewDetails(product);
             }}
             title="Inspect full specifications"
-            className="p-2 rounded-xl border border-white/10 bg-white/[0.04] text-[#A39A8C] hover:text-[#F5EFE6] hover:bg-white/[0.08] hover:border-white/20 transition-all"
+            aria-label={`Inspect ${product.name} specifications`}
+            className="min-w-[44px] min-h-[44px] p-2.5 rounded-xl border border-white/10 bg-white/[0.04] text-[#A39A8C] hover:text-[#F5EFE6] hover:bg-white/[0.08] hover:border-white/20 transition-all flex items-center justify-center"
           >
             <Eye className="w-4 h-4" />
           </button>
@@ -175,7 +177,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <button
             type="button"
             onClick={handleAdd}
-            className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+            aria-label={addedRecently ? `${product.name} added to cart` : `Add ${product.name} to cart`}
+            className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
               addedRecently
                 ? 'bg-[#4ADE80] text-[#0B0906]'
                 : 'btn-amber active:scale-95'

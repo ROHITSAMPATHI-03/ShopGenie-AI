@@ -157,10 +157,11 @@ export interface AgentResponse {
 
 export const api = {
   // Products
-  getProducts: (params: { q?: string; category?: string; sort?: string; minPrice?: number; maxPrice?: number } = {}) => {
+  getProducts: (params: { q?: string; category?: string; sort?: string; minPrice?: number; maxPrice?: number; brand?: string } = {}) => {
     const searchParams = new URLSearchParams();
     if (params.q) searchParams.set('q', params.q);
     if (params.category && params.category !== 'all') searchParams.set('category', params.category);
+    if (params.brand && params.brand !== 'all') searchParams.set('brand', params.brand);
     if (params.sort) searchParams.set('sort', params.sort);
     if (params.minPrice) searchParams.set('minPrice', params.minPrice.toString());
     if (params.maxPrice) searchParams.set('maxPrice', params.maxPrice.toString());
@@ -231,12 +232,27 @@ export const api = {
     }),
 
   // AI Shopping Assistant
-  sendChatMessage: (message: string) =>
+  sendChatMessage: (message: string, conversationId?: string, signal?: AbortSignal) =>
     fetchJson<AgentResponse>('/ai/chat', {
       method: 'POST',
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, conversationId }),
+      signal,
     }),
 
-  getChatHistory: () => fetchJson<{ messages: any[] }>('/ai/history'),
+  chat: (message: string, conversationId?: string, signal?: AbortSignal) =>
+    fetchJson<AgentResponse>('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message, conversationId }),
+      signal,
+    }),
+
+  resetConversation: (conversationId?: string) =>
+    fetchJson<{ success: boolean; message: string }>('/ai/reset', {
+      method: 'POST',
+      body: JSON.stringify({ conversationId }),
+    }),
+
+  getChatHistory: (conversationId?: string) =>
+    fetchJson<{ messages: any[] }>(`/ai/history${conversationId ? `?conversationId=${encodeURIComponent(conversationId)}` : ''}`),
 };
 

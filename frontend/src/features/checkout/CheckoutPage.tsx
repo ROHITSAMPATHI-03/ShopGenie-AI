@@ -101,7 +101,7 @@ export const CheckoutPage: React.FC = () => {
           Please add items to your shopping cart before initiating checkout.
         </p>
         <Link
-          to="/"
+          to="/products"
           className="px-6 py-2.5 rounded-xl btn-amber text-xs font-semibold"
         >
           Return to Catalogue
@@ -115,14 +115,21 @@ export const CheckoutPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-[#0B0906] text-[#F5EFE6] py-10 px-4 sm:px-6">
       <div className="max-w-[1100px] mx-auto space-y-6">
-        {/* Back button */}
-        <div>
+        {/* Back navigation */}
+        <div className="flex items-center gap-4">
           <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-[#A39A8C] hover:text-[#FFB020] transition-colors font-mono"
+            to="/cart"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-[#A39A8C] hover:text-[#FFB020] transition-colors font-mono min-h-[44px] px-1"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Continue Shopping</span>
+            <span>Back to Cart</span>
+          </Link>
+          <span className="text-white/20">•</span>
+          <Link
+            to="/"
+            className="text-xs font-mono text-[#A39A8C] hover:text-[#FFB020] transition-colors"
+          >
+            Home
           </Link>
         </div>
 
@@ -244,7 +251,11 @@ export const CheckoutPage: React.FC = () => {
 
               {/* Error Message */}
               {errorMsg && (
-                <div className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-[#F87171] text-xs flex items-start gap-2">
+                <div
+                  role="alert"
+                  aria-live="assertive"
+                  className="p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-[#F87171] text-xs flex items-start gap-2"
+                >
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <span>{errorMsg}</span>
                 </div>
@@ -252,7 +263,11 @@ export const CheckoutPage: React.FC = () => {
 
               {/* Cancel Notice */}
               {cancelNotice && (
-                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[#FFB020] text-xs flex items-start gap-2">
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[#FFB020] text-xs flex items-start gap-2"
+                >
                   <Info className="w-4 h-4 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-semibold block">Payment was cancelled</span>
@@ -269,6 +284,7 @@ export const CheckoutPage: React.FC = () => {
                       clientId: paypalConfig!.clientId,
                       currency: cart.chargeCurrency,
                       intent: 'capture',
+                      environment: (paypalConfig?.env === 'live' ? 'production' : 'sandbox') as 'production' | 'sandbox',
                     }}
                   >
                     <PayPalButtons

@@ -35,8 +35,9 @@ export const ComparisonTray: React.FC<ComparisonTrayProps> = ({
               <span className="truncate max-w-[110px]">{p.name}</span>
               <button
                 onClick={() => onRemove(p.id)}
-                className="text-[#A39A8C] hover:text-[#FFB020] p-0.5"
+                className="text-[#A39A8C] hover:text-[#FFB020] p-1.5 min-w-[28px] min-h-[28px] flex items-center justify-center transition-colors"
                 title="Remove"
+                aria-label={`Remove ${p.name} from comparison`}
               >
                 <X className="w-3 h-3" />
               </button>
@@ -48,7 +49,8 @@ export const ComparisonTray: React.FC<ComparisonTrayProps> = ({
       <div className="flex items-center gap-2 shrink-0">
         <button
           onClick={onClear}
-          className="text-xs font-mono text-[#A39A8C] hover:text-[#F5EFE6] px-2 py-1 transition-colors"
+          className="text-xs font-mono text-[#A39A8C] hover:text-[#F5EFE6] px-3 py-2 min-h-[44px] flex items-center justify-center transition-colors"
+          aria-label="Clear all compared products"
         >
           Clear
         </button>
@@ -56,7 +58,8 @@ export const ComparisonTray: React.FC<ComparisonTrayProps> = ({
         <button
           onClick={onOpenCompare}
           disabled={comparedProducts.length < 2}
-          className={`px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
+          aria-label="Compare selected products now"
+          className={`px-4 py-2.5 min-h-[44px] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
             comparedProducts.length >= 2
               ? 'btn-amber shadow-[0_0_15px_rgba(255,176,32,0.3)]'
               : 'bg-white/[0.04] text-[#A39A8C] border border-white/5 cursor-not-allowed opacity-50'
