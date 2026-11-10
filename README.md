@@ -1,0 +1,2 @@
+# ShopGenie-AI
+paypal
