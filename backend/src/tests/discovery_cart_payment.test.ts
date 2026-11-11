@@ -102,6 +102,27 @@ describe('ShopGenie AI - Comprehensive Verification Suite', () => {
         expect(pick.matchedRequirements.some(r => r.includes('for compiling'))).toBe(false);
       }
     });
+
+    it('Out-of-domain guardrail uses word boundaries and catalogue bypasses (Item 2)', async () => {
+      const oodSession = `ses_ood_test_${Date.now()}`;
+
+      // 1. "MacBook Air vs Pavilion" contains "book" as substring, but is a laptop -> MUST NOT BLOCK
+      const res1 = await AgentService.handleUserMessage(oodSession, 'MacBook Air vs Pavilion');
+      expect(res1.activities).not.toContain('Out-of-domain guardrail applied');
+
+      // 2. "phone with memory card slot" -> MUST NOT BLOCK
+      const res2 = await AgentService.handleUserMessage(oodSession, 'phone with memory card slot');
+      expect(res2.activities).not.toContain('Out-of-domain guardrail applied');
+
+      // 3. "adjustable stand monitor" contains "table" as substring in adjustable, but is monitor -> MUST NOT BLOCK
+      const res3 = await AgentService.handleUserMessage(oodSession, 'adjustable stand monitor');
+      expect(res3.activities).not.toContain('Out-of-domain guardrail applied');
+
+      // 4. "buy me shoes" is genuinely out-of-domain -> MUST BLOCK
+      const res4 = await AgentService.handleUserMessage(oodSession, 'buy me shoes');
+      expect(res4.activities).toContain('Out-of-domain guardrail applied');
+      expect(res4.message).toMatch(/specialized.*strictly for electronics/i);
+    });
   });
 
   describe('2. Comparison Engine (FR-4)', () => {
@@ -568,6 +589,44 @@ describe('ShopGenie AI - Comprehensive Verification Suite', () => {
       expect(cart.itemCount).toBe(1);
       expect(cart.items[0].productId).toBe('LAP-001');
     }, 15000);
+
+    it('Loads latest 10 messages in chronological order, correctly resolving latest recommendations after 12+ messages (Item 3)', async () => {
+      const db = getDatabase();
+      const testSession = `ses_history_order_${Date.now()}`;
+      const convId = 'conv_history_order';
+
+      // Ensure test session exists
+      db.prepare('INSERT OR IGNORE INTO sessions (id) VALUES (?)').run(testSession);
+
+      // Insert 12 messages with timestamps incrementing
+      const baseTime = Date.now() - 60000;
+      for (let i = 1; i <= 12; i++) {
+        const timeStr = new Date(baseTime + i * 1000).toISOString();
+        let metaJson = '{}';
+        if (i === 2) {
+          // Old recommendation
+          metaJson = JSON.stringify({ recommendedIds: ['LAP-001', 'LAP-002'] });
+        } else if (i === 11) {
+          // Latest recommendation
+          metaJson = JSON.stringify({ recommendedIds: ['LAP-003', 'LAP-004'] });
+        }
+
+        db.prepare(`
+          INSERT INTO conversations (id, session_id, conversation_id, role, content, metadata_json, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(`msg_${testSession}_${i}`, testSession, convId, i % 2 === 1 ? 'user' : 'assistant', `Test message ${i}`, metaJson, timeStr);
+      }
+
+      // Now send refinement: "compare the first two"
+      const res = await AgentService.handleUserMessage(testSession, 'compare the first two', convId);
+
+      // It must compare LAP-003 and LAP-004 (from message 11), NOT LAP-001 and LAP-002 (from message 2)
+      expect(res.comparison).toBeDefined();
+      const comparedIds = res.comparison?.products.map(p => p.id);
+      expect(comparedIds).toContain('LAP-003');
+      expect(comparedIds).toContain('LAP-004');
+      expect(comparedIds).not.toContain('LAP-001');
+    });
   });
 
   describe('7. End-to-End Buyer Journey & Edge Cases (Item 10)', () => {
@@ -660,6 +719,51 @@ describe('ShopGenie AI - Comprehensive Verification Suite', () => {
       expect(history.length).toBe(2);
       expect(history.some(o => o.id === order1.id && o.status === 'cancelled')).toBe(true);
       expect(history.some(o => o.id === order2.id && o.status === 'paid')).toBe(true);
+    });
+
+    it('Reserves stock atomically at order creation and restores stock upon cancellation, failure, or refund (Item 5)', () => {
+      const stockSession = `ses_stock_lifecycle_${Date.now()}`;
+      const db = getDatabase();
+
+      // Reset stock for MON-002 to known value 5
+      db.prepare("UPDATE products SET stock = 5 WHERE id = 'MON-002'").run();
+      expect(ProductService.getProductById('MON-002')?.stock).toBe(5);
+
+      // 1. Add 2 units of MON-002 to cart
+      CartService.addItem(stockSession, 'MON-002', 2);
+
+      // 2. Create order: stock must be decremented immediately to 3
+      const order = OrderService.createOrderFromCart(stockSession);
+      expect(order.status).toBe('pending');
+      expect(ProductService.getProductById('MON-002')?.stock).toBe(3);
+
+      // 3. Attempting to create another order exceeding remaining stock fails with insufficient stock
+      const greedySession = `ses_greedy_${Date.now()}`;
+      CartService.addItem(greedySession, 'MON-002', 2);
+      // Simulate concurrent reservation dropping stock below cart quantity
+      db.prepare("UPDATE products SET stock = 1 WHERE id = 'MON-002'").run();
+      expect(() => {
+        OrderService.createOrderFromCart(greedySession);
+      }).toThrow(/Insufficient stock/i);
+
+      // Restore stock back to 3 for continuation
+      db.prepare("UPDATE products SET stock = 3 WHERE id = 'MON-002'").run();
+
+      // 4. Cancel the first order: stock must be restored from 3 back to 5
+      OrderService.cancelOrder(stockSession, order.id);
+      expect(ProductService.getProductById('MON-002')?.stock).toBe(5);
+
+      // 5. Customer re-creates order: stock drops from 5 to 3
+      const order2 = OrderService.createOrderFromCart(stockSession);
+      expect(ProductService.getProductById('MON-002')?.stock).toBe(3);
+
+      // 6. Complete payment: stock must NOT decrement twice (remains 3)
+      OrderService.markPaid(order2.id, `CAP-STOCK-${Date.now()}`);
+      expect(ProductService.getProductById('MON-002')?.stock).toBe(3);
+
+      // 7. Refund the order: stock must be restored from 3 back to 5
+      OrderService.markRefunded(order2.id);
+      expect(ProductService.getProductById('MON-002')?.stock).toBe(5);
     });
   });
 });

@@ -13,13 +13,14 @@ All tests run locally using Node's built-in `node:sqlite` engine and Vitest. Zer
 npm test
 ```
 
-### Verified Test Matrix (35 Tests Across 3 Suites — 100% Passing)
+### Verified Test Matrix (39 Tests Across 3 Suites — 100% Passing)
 
 #### 1. Discovery & Recommendation Engine (`discovery_cart_payment.test.ts`)
 - [x] **Budget Exclusion**: Laptops exceeding budget (e.g., MacBook M2 ₹89,990, HP Pavilion ₹54,990) are strictly excluded from results when budget is ₹50,000.
 - [x] **Battery Priority**: Prioritizing battery life promotes high-endurance devices (10h-12h rating) with higher priority match scores and clear explanation badges.
 - [x] **Divergent Usage Profiles**: Student, Gamer, and Video Editor profiles produce visibly different top rankings on the same catalogue (e.g. Gamer selects ASUS TUF Gaming with dedicated GPU & 144Hz screen).
 - [x] **No Hallucinated Specs**: Phone evaluations do not apply laptop RAM or CPU compilation criteria.
+- [x] **Out-of-Domain Word Boundaries & Bypass**: Matches on whole-word boundaries so "MacBook" and "tablet" are never falsely blocked as "book" or "table"; in-catalogue keywords safely bypass false positives.
 
 #### 2. Comparison Engine (`discovery_cart_payment.test.ts`)
 - [x] **Side-by-side Matrix**: 2 to 4 products compared accurately with spec values, price differences, and deterministic best-value score.
@@ -35,6 +36,7 @@ npm test
 - [x] **Immutable Order Snapshot**: Creates order record with frozen item names, unit prices in paise, and exact converted USD cents.
 - [x] **Cart Preservation on Cancel**: Order cancellation marks status `cancelled` while preserving user cart intact.
 - [x] **Session Scoping & Persistence**: Past orders survive across queries and only appear for the owning session.
+- [x] **Stock Reservation & Restoration**: Atomically reserves stock upon order creation; restores stock when an order is cancelled, failed, refunded, or reversed; ensures `markPaid` does not double-decrement.
 
 #### 5. PayPal Webhooks & Idempotency Pipeline (`discovery_cart_payment.test.ts`)
 - [x] **Signature Verification**: Rejects unauthorized webhook requests lacking valid PayPal transmission headers with HTTP 400.
@@ -49,6 +51,7 @@ npm test
 #### 6. AI Conversation Scoping & Reset (`discovery_cart_payment.test.ts`)
 - [x] **Conversation Isolation**: Messages are scoped by client-generated UUID `conversationId`.
 - [x] **Conversation Reset**: Calling `POST /api/ai/reset` clears stored conversation history for that conversation ID while preserving cart items and preferences.
+- [x] **Latest History Ordering**: Queries latest 10 messages in reverse chronological order and presents them in chronological order so context refinements always pick up latest recommendations after 12+ messages.
 
 #### 7. End-to-End Buyer Journey & Cancellation Retries (`discovery_cart_payment.test.ts`)
 - [x] **Full E2E Buyer Journey**: Search & rank laptops under ₹50,000 &rarr; compare top 2 models &rarr; add best-value pick to cart &rarr; create pending order &rarr; capture PayPal payment &rarr; verify inventory decrement, cart clearing, and order history presence.
@@ -61,7 +64,8 @@ npm test
 - [x] **Cancellation Invariant**: Order cancellation cannot overwrite an already paid order.
 - [x] **Out-of-Domain Guardrails**: Inquiries outside consumer electronics (shoes, groceries, food, cars) trigger focused domain restrictions with suggested tech categories.
 - [x] **Production Secret Security (SEC-1, SEC-2)**: Fails fast on production startup if `SESSION_SECRET` is missing, shorter than 32 characters, or using sample defaults.
-- [x] **CSRF Origin Protection (SEC-6)**: Rejects state-changing mutations from unauthorized foreign origins with HTTP 403.
+- [x] **Cryptographic Session Signing (SEC-1)**: Sets `signed: true` with HMAC-SHA256 signature, invalidating tampered cookies.
+- [x] **CSRF Origin Protection (SEC-6)**: Rejects state-changing mutations from unauthorized foreign origins with HTTP 403, and drops localhost in production.
 - [x] **Webhook Error Sanitization (SEC-1)**: Prevents internal stack or exception message leakage on 500 error responses.
 - [x] **Rate Limiter Scoping**: Ensures public `GET /api/paypal/config` is unthrottled for smooth catalogue browsing.
 

@@ -162,8 +162,8 @@ export class PayPalService {
       return Array.isArray(val) ? val[0] : val;
     };
 
-    // Test environment signature bypass hook for unit tests
-    if (env.NODE_ENV === 'test' && getHeader('x-test-bypass-signature') === 'true') {
+    // Test environment signature bypass hook strictly for automated unit tests when webhook ID is not set
+    if (env.NODE_ENV === 'test' && !env.PAYPAL_WEBHOOK_ID?.trim() && getHeader('x-test-bypass-signature') === 'true') {
       return true;
     }
 

@@ -325,6 +325,19 @@ export const CheckoutPage: React.FC = () => {
                 <Lock className="w-3.5 h-3.5 text-[#4ADE80]" />
                 <span>TLS 256-bit Encrypted • Sandbox Environment</span>
               </div>
+
+              {/* Sandbox International Regulatory Notice / Tester Guidance */}
+              {isPayPalConfigured && (
+                <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-amber-500/20 text-xs space-y-1.5 font-mono">
+                  <div className="flex items-center gap-2 text-[#FFB020] font-semibold">
+                    <Info className="w-4 h-4 shrink-0" />
+                    <span>PayPal Sandbox Login Tip</span>
+                  </div>
+                  <p className="text-[11px] text-[#A39A8C] leading-relaxed">
+                    To avoid international regulatory declines in Sandbox, log in with a <span className="text-[#F5EFE6] font-semibold">US-based Sandbox Personal Account</span> from <span className="text-[#FFB020]">developer.paypal.com</span> &gt; Sandbox Accounts (Country: United States). Do not use a personal Indian PayPal account.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -11,7 +11,7 @@ export interface AuthenticatedRequest extends Request {
 
 export function sessionMiddleware(req: Request, res: Response, next: NextFunction): void {
   // CSRF Origin validation on state-changing requests
-  const method = req.method.toUpperCase();
+  const method = (req.method || 'GET').toUpperCase();
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
     // Exempt PayPal webhook (incoming from PayPal IPN/webhook infrastructure)
     if (req.path !== '/api/paypal/webhook' && !req.originalUrl?.includes('/api/paypal/webhook')) {
@@ -19,13 +19,15 @@ export function sessionMiddleware(req: Request, res: Response, next: NextFunctio
       if (origin && typeof origin === 'string') {
         try {
           const originUrl = new URL(origin);
-          const allowedOrigins = [
-            env.FRONTEND_ORIGIN,
-            'http://localhost:5173',
-            'http://127.0.0.1:5173',
-            'http://localhost:4000',
-            'http://127.0.0.1:4000',
-          ];
+          const allowedOrigins = env.NODE_ENV === 'production'
+            ? [env.FRONTEND_ORIGIN]
+            : [
+                env.FRONTEND_ORIGIN,
+                'http://localhost:5173',
+                'http://127.0.0.1:5173',
+                'http://localhost:4000',
+                'http://127.0.0.1:4000',
+              ];
           const isAllowed = allowedOrigins.some(allowed => {
             try {
               const u = new URL(allowed);
@@ -48,7 +50,10 @@ export function sessionMiddleware(req: Request, res: Response, next: NextFunctio
   }
 
   const db = getDatabase();
-  let sessionId = req.cookies?.[SESSION_COOKIE_NAME];
+  const signedSession = req.signedCookies?.[SESSION_COOKIE_NAME];
+  let sessionId = (signedSession && typeof signedSession === 'string')
+    ? signedSession
+    : req.cookies?.[SESSION_COOKIE_NAME];
 
   let isValidSession = false;
   if (sessionId && typeof sessionId === 'string' && sessionId.length >= 16) {
@@ -73,6 +78,7 @@ export function sessionMiddleware(req: Request, res: Response, next: NextFunctio
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
+      signed: true,
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       path: '/',
     });

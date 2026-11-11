@@ -228,6 +228,27 @@ describe('ShopGenie AI - Security & Trust Boundaries (SEC-1 through SEC-12)', ()
       expect(cancelRoute).toBeDefined();
       expect(cancelRoute?.route?.stack?.length).toBe(2);
     });
+
+    it('Signs session cookies to guarantee authenticity and prevent client tampering (SEC-1, Item 4)', () => {
+      let setCookieArgs: any = null;
+      const mockReq = {
+        cookies: {},
+        signedCookies: {},
+      } as any;
+
+      const mockRes = {
+        cookie: (name: string, value: string, options: any) => {
+          setCookieArgs = { name, value, options };
+        },
+      } as any;
+
+      sessionMiddleware(mockReq, mockRes, () => {});
+
+      expect(setCookieArgs).toBeDefined();
+      expect(setCookieArgs.name).toBe('shopgenie_session');
+      expect(setCookieArgs.options.signed).toBe(true);
+      expect(setCookieArgs.options.httpOnly).toBe(true);
+    });
   });
 });
 

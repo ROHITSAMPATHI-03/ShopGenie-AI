@@ -60,7 +60,18 @@ export class OrderService {
     const orderId = `ORD-${Date.now().toString().slice(-6)}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
     const createTransaction = db.transaction(() => {
-      // 1. Insert order record
+      // 1. Atomically reserve stock inside the transaction (Item 5)
+      for (const item of cart.items) {
+        const updateRes = db.prepare(
+          'UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?'
+        ).run(item.quantity, item.productId, item.quantity);
+
+        if (updateRes.changes === 0) {
+          throw new Error(`Insufficient stock for "${item.product.name}"`);
+        }
+      }
+
+      // 2. Insert order record
       db.prepare(`
         INSERT INTO orders (
           id, session_id, status,
@@ -83,7 +94,7 @@ export class OrderService {
         inr_to_usd_rate: cart.inrToUsdRate,
       });
 
-      // 2. Insert immutable order items snapshots
+      // 3. Insert immutable order items snapshots
       const itemStmt = db.prepare(`
         INSERT INTO order_items (
           id, order_id, product_id, name_snapshot, unit_price_inr_paise_snapshot, quantity
@@ -355,13 +366,9 @@ export class OrderService {
         WHERE id = ?
       `).run(orderId);
 
-      // 3. Decrement stock for purchased items
-      for (const item of order.items) {
-        db.prepare('UPDATE products SET stock = MAX(0, stock - ?) WHERE id = ?')
-          .run(item.quantity, item.productId);
-      }
+      // Stock was already atomically reserved at order creation. Do not decrement twice!
 
-      // 4. Clear cart for this order's session
+      // 3. Clear cart for this order's session
       CartService.clearCart(order.sessionId);
     });
 
@@ -377,8 +384,8 @@ export class OrderService {
       throw new Error(`Order ${orderId} not found`);
     }
 
-    // Never overwrite an already settled order
-    if (order.status === 'paid' || order.status === 'refunded' || order.status === 'reversed') {
+    // Never overwrite an already settled or failed order
+    if (order.status === 'paid' || order.status === 'refunded' || order.status === 'reversed' || order.status === 'failed') {
       return order;
     }
 
@@ -394,6 +401,11 @@ export class OrderService {
         SET status = 'FAILED', raw_status = ?, updated_at = CURRENT_TIMESTAMP
         WHERE order_id = ?
       `).run(reason, orderId);
+    }
+
+    // Restore reserved stock (Item 5)
+    for (const item of order.items) {
+      db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(item.quantity, item.productId);
     }
 
     return this.getOrderById(orderId)!;
@@ -437,6 +449,11 @@ export class OrderService {
     db.prepare("UPDATE payments SET status = 'REFUNDED', raw_status = 'REFUNDED', updated_at = CURRENT_TIMESTAMP WHERE order_id = ?")
       .run(orderId);
 
+    // Restore reserved stock on refund (Item 5)
+    for (const item of order.items) {
+      db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(item.quantity, item.productId);
+    }
+
     return this.getOrderById(orderId)!;
   }
 
@@ -458,6 +475,11 @@ export class OrderService {
     db.prepare("UPDATE payments SET status = 'REVERSED', raw_status = 'REVERSED', updated_at = CURRENT_TIMESTAMP WHERE order_id = ?")
       .run(orderId);
 
+    // Restore reserved stock on reversal (Item 5)
+    for (const item of order.items) {
+      db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(item.quantity, item.productId);
+    }
+
     return this.getOrderById(orderId)!;
   }
 
@@ -468,13 +490,18 @@ export class OrderService {
       throw new Error('Order not found or authorization failed');
     }
 
-    // Invariant: Never overwrite an already settled order! (SEC-7, SEC-8)
-    if (order.status === 'paid' || order.status === 'refunded' || order.status === 'reversed') {
+    // Invariant: Never overwrite an already settled or cancelled order! (SEC-7, SEC-8)
+    if (order.status === 'paid' || order.status === 'refunded' || order.status === 'reversed' || order.status === 'cancelled') {
       return order;
     }
 
     db.prepare("UPDATE orders SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
       .run(orderId);
+
+    // Restore reserved stock on cancellation (Item 5)
+    for (const item of order.items) {
+      db.prepare('UPDATE products SET stock = stock + ? WHERE id = ?').run(item.quantity, item.productId);
+    }
 
     return this.getOrderById(orderId, sessionId)!;
   }

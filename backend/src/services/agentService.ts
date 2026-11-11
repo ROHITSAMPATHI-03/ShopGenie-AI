@@ -43,23 +43,23 @@ export class AgentService {
     // Ensure session exists in sessions table
     db.prepare('INSERT OR IGNORE INTO sessions (id) VALUES (?)').run(sessionId);
 
-    // 1. Fetch recent conversation history filtered by conversationId if provided
+    // 1. Fetch recent conversation history filtered by conversationId if provided (latest 10 messages)
     const historyStmt = conversationId
       ? db.prepare(`
-          SELECT role, content, metadata_json 
-          FROM conversations 
+          SELECT role, content, metadata_json
+          FROM conversations
           WHERE session_id = ? AND conversation_id = ?
-          ORDER BY created_at ASC 
+          ORDER BY created_at DESC
           LIMIT 10
         `)
       : db.prepare(`
-          SELECT role, content, metadata_json 
-          FROM conversations 
-          WHERE session_id = ? 
-          ORDER BY created_at ASC 
+          SELECT role, content, metadata_json
+          FROM conversations
+          WHERE session_id = ?
+          ORDER BY created_at DESC
           LIMIT 10
         `);
-    const historyRows = (conversationId ? historyStmt.all(sessionId, conversationId) : historyStmt.all(sessionId)) as any[];
+    const historyRows = ((conversationId ? historyStmt.all(sessionId, conversationId) : historyStmt.all(sessionId)) as any[]).reverse();
 
     // Extract last recommended product IDs from conversation history or session
     let lastRecommendedIds: string[] = [];
@@ -90,13 +90,10 @@ export class AgentService {
 
     // Graceful Guardrail: Check for queries outside our electronics catalogue
     const lowerMsg = userMessage.toLowerCase();
-    const outOfCatalogueKeywords = [
-      'shoe', 'sneaker', 'boot', 'grocery', 'groceries', 'food', 'milk', 'bread', 'vegetable', 'fruit',
-      'car', 'bike', 'motorcycle', 'cloth', 'shirt', 'pant', 'dress', 'furniture', 'sofa', 'table', 'chair',
-      'medicine', 'drug', 'book', 'toy', 'flight', 'ticket', 'hotel', 'restaurant'
-    ];
+    const IN_CATALOGUE = /\b(laptop|notebook|macbook|computer|phone|smartphone|iphone|headphone|earphone|audio|earbud|soundcore|keyboard|keychron|monitor|display|screen|tablet)\b/i;
+    const OOD = /\b(shoes?|sneakers?|boots?|groceries|grocery|food|milk|bread|vegetables?|fruits?|cars?|bikes?|motorcycles?|clothes|clothing|shirts?|pants?|dress(es)?|furniture|sofa|tables?|chairs?|medicine|drugs?|books?|toys?|flights?|tickets?|hotels?|restaurants?)\b/i;
 
-    const isOutOfDomain = outOfCatalogueKeywords.some(w => lowerMsg.includes(w));
+    const isOutOfDomain = OOD.test(userMessage) && !IN_CATALOGUE.test(userMessage);
     if (isOutOfDomain) {
       const guardrailMsg = `ShopGenie is a specialized shopping assistant strictly for electronics: **laptops, smartphones, headphones, mechanical keyboards, and monitors**. I cannot search for non-tech items. Would you like to explore our top laptops or noise-cancelling headphones instead?`;
       const assistantMsgId = `msg_${Date.now()}_a`;
@@ -117,7 +114,9 @@ export class AgentService {
     // 2. Resolve Context Refinements (e.g., "compare the first two", "add the second one", "compare my top 2")
     let interceptedToolCall: { name: string; args: any } | null = null;
 
+    const compareRegex = /compare\s+(?:the\s+)?(?:first|top|my\s+top)\s+(?:two|2)/i;
     if (
+      compareRegex.test(userMessage) ||
       lowerMsg.includes('compare the first two') ||
       lowerMsg.includes('compare first two') ||
       lowerMsg.includes('compare top two') ||
@@ -136,17 +135,17 @@ export class AgentService {
           args: { productIds: ['LAP-001', 'LAP-002'] },
         };
       }
-    } else if (lastRecommendedIds.length >= 1 && (lowerMsg.includes('add the first') || lowerMsg.includes('add first one'))) {
+    } else if (lastRecommendedIds.length >= 1 && (lowerMsg.includes('add the first') || lowerMsg.includes('add first one') || /\badd\s+(?:the\s+)?(?:first|1st|1)\b/i.test(userMessage))) {
       interceptedToolCall = {
         name: 'addToCart',
         args: { productId: lastRecommendedIds[0], quantity: 1 },
       };
-    } else if (lastRecommendedIds.length >= 2 && (lowerMsg.includes('add the second') || lowerMsg.includes('add second one'))) {
+    } else if (lastRecommendedIds.length >= 2 && (lowerMsg.includes('add the second') || lowerMsg.includes('add second one') || /\badd\s+(?:the\s+)?(?:second|2nd|2)\b/i.test(userMessage))) {
       interceptedToolCall = {
         name: 'addToCart',
         args: { productId: lastRecommendedIds[1], quantity: 1 },
       };
-    } else if (lastRecommendedIds.length >= 3 && (lowerMsg.includes('add the third') || lowerMsg.includes('add third one'))) {
+    } else if (lastRecommendedIds.length >= 3 && (lowerMsg.includes('add the third') || lowerMsg.includes('add third one') || /\badd\s+(?:the\s+)?(?:third|3rd|3)\b/i.test(userMessage))) {
       interceptedToolCall = {
         name: 'addToCart',
         args: { productId: lastRecommendedIds[2], quantity: 1 },
@@ -348,7 +347,7 @@ export class AgentService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: env.GEMINI_MODEL || 'gemini-1.5-flash',
+          model: env.GEMINI_MODEL || 'gemini-2.5-flash',
           messages,
           tools: openAITools,
           tool_choice: 'auto',
@@ -470,13 +469,10 @@ export class AgentService {
     }
 
     // Graceful Guardrail: Check for queries outside our electronics catalogue
-    const outOfCatalogueKeywords = [
-      'shoe', 'sneaker', 'boot', 'grocery', 'groceries', 'food', 'milk', 'bread', 'vegetable', 'fruit',
-      'car', 'bike', 'motorcycle', 'cloth', 'shirt', 'pant', 'dress', 'furniture', 'sofa', 'table', 'chair',
-      'medicine', 'drug', 'book', 'toy', 'flight', 'ticket', 'hotel', 'restaurant'
-    ];
+    const IN_CATALOGUE = /\b(laptop|notebook|macbook|computer|phone|smartphone|iphone|headphone|earphone|audio|earbud|soundcore|keyboard|keychron|monitor|display|screen|tablet)\b/i;
+    const OOD = /\b(shoes?|sneakers?|boots?|groceries|grocery|food|milk|bread|vegetables?|fruits?|cars?|bikes?|motorcycles?|clothes|clothing|shirts?|pants?|dress(es)?|furniture|sofa|tables?|chairs?|medicine|drugs?|books?|toys?|flights?|tickets?|hotels?|restaurants?)\b/i;
 
-    const isOutOfDomain = outOfCatalogueKeywords.some(w => lower.includes(w));
+    const isOutOfDomain = OOD.test(userMessage) && !IN_CATALOGUE.test(userMessage);
     if (isOutOfDomain) {
       const guardrailMsg = `ShopGenie is a specialized shopping assistant strictly for electronics: **laptops, smartphones, headphones, mechanical keyboards, and monitors**. I cannot search for non-tech items. Would you like to explore our top laptops or noise-cancelling headphones instead?`;
       const assistantMsgId = `msg_${Date.now()}_a`;

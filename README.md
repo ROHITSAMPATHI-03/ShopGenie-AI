@@ -25,9 +25,9 @@ An AI-powered autonomous shopping assistant with intelligent product discovery, 
 | :--- | :--- |
 | **Frontend** | React 18, Vite, TypeScript, Tailwind CSS, Lucide Icons, `@paypal/react-paypal-js` |
 | **Backend** | Node.js (v20+), Express 4, TypeScript, built-in `node:sqlite` (with `better-sqlite3` fallback), `zod`, `helmet`, `cors`, `express-rate-limit` |
-| **AI Integration** | Google Gemini API (`@google/generative-ai`) model `gemini-1.5-flash` with 7 validated shopping function declarations |
+| **AI Integration** | Google Gemini API model `gemini-2.5-flash` (via OpenAI-compatible endpoint; `@google/generative-ai` provides schema types) with 7 validated shopping tools |
 | **Payments** | PayPal Orders v2 REST API + PayPal JS SDK (Sandbox Mode) |
-| **Testing** | Vitest, Supertest (35 automated tests passing — 100% passing) |
+| **Testing** | Vitest, Supertest (39 automated tests passing — 100% passing) |
 
 ---
 
@@ -57,11 +57,15 @@ Copy-Item .env.example .env
 cp .env.example .env
 ```
 
+> [!IMPORTANT]
+> **Existing `.env` Notice**: If you have an existing `.env` file from earlier runs, please update `GEMINI_MODEL=gemini-2.5-flash`. Existing `.env` files take precedence over defaults.
+
 Configure your credentials in `.env`:
 ```env
 # Gemini API Key (Optional for basic discovery; deterministic fallback active if omitted)
+# Agent loop communicates via Google AI Studio's OpenAI-compatible endpoint (/v1beta/openai/chat/completions)
 GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 
 # PayPal Sandbox Credentials (Required for live Sandbox popup approval)
 PAYPAL_CLIENT_ID=your_paypal_sandbox_client_id
@@ -107,7 +111,7 @@ Open your browser to: **[http://localhost:5173](http://localhost:5173)**
 | `npm run dev:backend` | Starts backend development server (`node --watch`) |
 | `npm run dev:frontend` | Starts Vite frontend dev server on port 5173 |
 | `npm run build` | Compiles backend TypeScript and builds production Vite frontend |
-| `npm run test` | Runs the Vitest automated test suite (35 passing tests across 3 suites) |
+| `npm run test` | Runs the Vitest automated test suite (39 passing tests across 3 suites) |
 | `npm run seed` | Seeds or updates the 28 products catalogue in SQLite |
 | `npm run install:all` | Installs root, backend, and frontend dependencies in one step |
 
@@ -154,7 +158,7 @@ Note the HTTPS forwarding URL (e.g. `https://your-tunnel-id.ngrok-free.app`).
 
 ## Verification & Test Suite
 
-ShopGenie AI comes with 35 automated tests covering discovery, cart math, PayPal order lifecycles, webhooks, and security invariants:
+ShopGenie AI comes with 39 automated tests covering discovery, cart math, PayPal order lifecycles, webhooks, and security invariants:
 
 ```bash
 npm test

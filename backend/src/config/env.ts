@@ -37,7 +37,7 @@ export const envSchema = z.object({
   
   // Gemini config
   GEMINI_API_KEY: z.string().optional().default(''),
-  GEMINI_MODEL: z.string().default('gemini-1.5-flash'),
+  GEMINI_MODEL: z.string().default('gemini-2.5-flash'),
   
   // OpenAI config (Multi-model compatibility)
   OPENAI_API_KEY: z.string().optional().default(''),

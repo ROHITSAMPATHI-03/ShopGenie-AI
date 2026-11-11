@@ -35,7 +35,7 @@ aiRouter.post('/chat', chatRateLimiter, async (req: any, res: Response) => {
     res.json(response);
   } catch (error: any) {
     console.error('[AI Chat Route Error]', error);
-    res.status(500).json({ error: error.message || 'An unexpected error occurred while processing your request' });
+    res.status(500).json({ error: 'An unexpected error occurred while processing your request' });
   }
 });
 
