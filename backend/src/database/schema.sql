@@ -47,7 +47,7 @@ CREATE INDEX IF NOT EXISTS idx_cart_session ON cart_items(session_id);
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
   session_id TEXT NOT NULL,
-  status TEXT NOT NULL CHECK(status IN ('pending', 'paid', 'failed', 'cancelled')),
+  status TEXT NOT NULL CHECK(status IN ('pending', 'paid', 'failed', 'cancelled', 'refunded', 'reversed')),
   subtotal_inr_paise INTEGER NOT NULL CHECK(subtotal_inr_paise >= 0),
   shipping_inr_paise INTEGER NOT NULL DEFAULT 0,
   tax_inr_paise INTEGER NOT NULL DEFAULT 0,
@@ -115,7 +115,10 @@ CREATE INDEX IF NOT EXISTS idx_conversations_conv_id ON conversations(conversati
 CREATE TABLE IF NOT EXISTS webhook_events (
   id TEXT PRIMARY KEY,
   event_type TEXT NOT NULL,
-  received_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  status TEXT NOT NULL DEFAULT 'completed' CHECK(status IN ('processing', 'completed', 'failed')),
+  error_message TEXT,
+  received_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  processed_at DATETIME
 );
 
 CREATE INDEX IF NOT EXISTS idx_webhook_events_type ON webhook_events(event_type);

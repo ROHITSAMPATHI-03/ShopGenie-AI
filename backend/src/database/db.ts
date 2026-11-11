@@ -156,6 +156,54 @@ export function getDatabase(): ISqliteDatabase {
     }
   } catch {}
 
+  try {
+    const webhookTableInfo = db.prepare("PRAGMA table_info(webhook_events)").all() as any[];
+    if (webhookTableInfo && webhookTableInfo.length > 0) {
+      if (!webhookTableInfo.some(col => col.name === 'status')) {
+        db.exec("ALTER TABLE webhook_events ADD COLUMN status TEXT NOT NULL DEFAULT 'completed';");
+      }
+      if (!webhookTableInfo.some(col => col.name === 'error_message')) {
+        db.exec("ALTER TABLE webhook_events ADD COLUMN error_message TEXT;");
+      }
+      if (!webhookTableInfo.some(col => col.name === 'processed_at')) {
+        db.exec("ALTER TABLE webhook_events ADD COLUMN processed_at DATETIME;");
+      }
+    }
+  } catch {}
+
+  // Safe migration for orders table CHECK constraint to include refunded & reversed
+  try {
+    const orderSqlRow = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='orders'").get() as { sql: string } | undefined;
+    if (orderSqlRow?.sql && !orderSqlRow.sql.includes('refunded')) {
+      db.exec(`
+        PRAGMA foreign_keys = OFF;
+        CREATE TABLE IF NOT EXISTS orders_v2 (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          status TEXT NOT NULL CHECK(status IN ('pending', 'paid', 'failed', 'cancelled', 'refunded', 'reversed')),
+          subtotal_inr_paise INTEGER NOT NULL CHECK(subtotal_inr_paise >= 0),
+          shipping_inr_paise INTEGER NOT NULL DEFAULT 0,
+          tax_inr_paise INTEGER NOT NULL DEFAULT 0,
+          total_inr_paise INTEGER NOT NULL CHECK(total_inr_paise >= 0),
+          charge_currency TEXT NOT NULL DEFAULT 'USD',
+          charge_amount_usd_cents INTEGER NOT NULL CHECK(charge_amount_usd_cents >= 0),
+          inr_to_usd_rate REAL NOT NULL,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (session_id) REFERENCES sessions(id)
+        );
+        INSERT INTO orders_v2 SELECT * FROM orders;
+        DROP TABLE orders;
+        ALTER TABLE orders_v2 RENAME TO orders;
+        CREATE INDEX IF NOT EXISTS idx_orders_session ON orders(session_id);
+        CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+        PRAGMA foreign_keys = ON;
+      `);
+    }
+  } catch (err) {
+    console.warn('[Migration Warning] orders table migration:', err);
+  }
+
   // Initialize schema
   let schemaPath = path.resolve(__dirname, 'schema.sql');
   if (!fs.existsSync(schemaPath)) {

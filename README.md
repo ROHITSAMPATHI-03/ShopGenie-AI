@@ -24,10 +24,10 @@ An AI-powered autonomous shopping assistant with intelligent product discovery, 
 | Layer | Technologies |
 | :--- | :--- |
 | **Frontend** | React 18, Vite, TypeScript, Tailwind CSS, Lucide Icons, `@paypal/react-paypal-js` |
-| **Backend** | Node.js, Express, TypeScript, `better-sqlite3`, `zod`, `helmet`, `cors`, `express-rate-limit` |
-| **AI Integration** | Google Gemini API (`@google/generative-ai`) with 7 validated shopping function declarations |
+| **Backend** | Node.js (v20+), Express 4, TypeScript, built-in `node:sqlite` (with `better-sqlite3` fallback), `zod`, `helmet`, `cors`, `express-rate-limit` |
+| **AI Integration** | Google Gemini API (`@google/generative-ai`) model `gemini-1.5-flash` with 7 validated shopping function declarations |
 | **Payments** | PayPal Orders v2 REST API + PayPal JS SDK (Sandbox Mode) |
-| **Testing** | Vitest, Supertest (18 automated tests passing) |
+| **Testing** | Vitest, Supertest (35 automated tests passing — 100% passing) |
 
 ---
 
@@ -40,7 +40,7 @@ An AI-powered autonomous shopping assistant with intelligent product discovery, 
 ### 2. Installation
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/ShopGenie-AI.git
+git clone https://github.com/ROHITSAMPATHI-03/ShopGenie-AI.git
 cd ShopGenie-AI
 
 # Install all dependencies (root, frontend & backend)
@@ -61,7 +61,7 @@ Configure your credentials in `.env`:
 ```env
 # Gemini API Key (Optional for basic discovery; deterministic fallback active if omitted)
 GEMINI_API_KEY=your_gemini_api_key_here
-GEMINI_MODEL=gemini-3.5-flash-lite
+GEMINI_MODEL=gemini-1.5-flash
 
 # PayPal Sandbox Credentials (Required for live Sandbox popup approval)
 PAYPAL_CLIENT_ID=your_paypal_sandbox_client_id
@@ -69,13 +69,15 @@ PAYPAL_CLIENT_SECRET=your_paypal_sandbox_client_secret
 PAYPAL_WEBHOOK_ID=your_paypal_sandbox_webhook_id
 PAYPAL_ENV=sandbox
 
-# Currency & Rates
+# Currency & Rates (PayPal Sandbox charges in USD using fixed demo rate)
 CHARGE_CURRENCY=USD
 INR_TO_USD=0.012
 
-# Server & Session
+# Server & Session Security
 FRONTEND_ORIGIN=http://localhost:5173
-SESSION_SECRET=shopgenie_super_secure_secret_key_12345
+# Generate 32+ character secret: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# If omitted in development, a secure 32-byte secret is auto-generated at startup.
+SESSION_SECRET=
 DATABASE_PATH=./data/shopgenie.db
 PORT=4000
 ```
@@ -105,11 +107,9 @@ Open your browser to: **[http://localhost:5173](http://localhost:5173)**
 | `npm run dev:backend` | Starts backend development server (`node --watch`) |
 | `npm run dev:frontend` | Starts Vite frontend dev server on port 5173 |
 | `npm run build` | Compiles backend TypeScript and builds production Vite frontend |
-| `npm run test` | Runs the Vitest automated test suite (20 tests) |
+| `npm run test` | Runs the Vitest automated test suite (35 passing tests across 3 suites) |
 | `npm run seed` | Seeds or updates the 28 products catalogue in SQLite |
 | `npm run install:all` | Installs root, backend, and frontend dependencies in one step |
-| `npm run test` | Runs the Vitest automated test suite |
-| `npm run seed` | Seeds or updates the 28 products catalogue in SQLite |
 
 ---
 
@@ -154,13 +154,13 @@ Note the HTTPS forwarding URL (e.g. `https://your-tunnel-id.ngrok-free.app`).
 
 ## Verification & Test Suite
 
-ShopGenie AI comes with 25 automated tests covering discovery, cart math, PayPal order lifecycles, webhooks, and security invariants:
+ShopGenie AI comes with 35 automated tests covering discovery, cart math, PayPal order lifecycles, webhooks, and security invariants:
 
 ```bash
 npm test
 ```
 
-### Key Tests Verified:
+### Key Tests Verified (100% Passing):
 - **Budget Filtering**: Hard constraint excludes over-budget products (e.g. ₹89,990 MacBook M2 excluded for ₹50,000 budget).
 - **Battery Priority**: Promotes 10h–12h battery laptops in ranking score and explanation.
 - **Usage Profiles**: Programmer, Gamer, and Video Editor profiles produce divergent top recommendations on the same catalogue.
@@ -168,7 +168,8 @@ npm test
 - **Tampering Invariant**: Client cannot tamper with prices; unit price is read strictly from SQLite products table.
 - **AI Security Invariants**: Prompt injections ("make it free", "mark order paid") cannot alter cart totals or order states.
 - **Cancellation Safe**: Order cancellation safely sets status to `cancelled` without clearing the cart.
-- **Session Scoping**: One session cannot access or mutate another session's cart or orders.
+- **Session Scoping & CSRF**: One session cannot access or mutate another session's cart or orders; foreign cross-origin state mutations are rejected with HTTP 403.
+- **Webhook Retry & Idempotency**: Failed webhook executions are cleanly retried upon redelivery; successful events are deduplicated; refunds and reversals are idempotently recorded without double-decrementing stock.
 
 ---
 

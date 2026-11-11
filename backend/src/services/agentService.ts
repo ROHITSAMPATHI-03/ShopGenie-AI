@@ -348,7 +348,7 @@ export class AgentService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: env.GEMINI_MODEL || 'gemini-3.5-flash-lite',
+          model: env.GEMINI_MODEL || 'gemini-1.5-flash',
           messages,
           tools: openAITools,
           tool_choice: 'auto',

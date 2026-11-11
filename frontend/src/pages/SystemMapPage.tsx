@@ -114,7 +114,7 @@ const NODES: SystemNode[] = [
     technologies: ['Node.js (v20+)', 'Express 4', 'Zod', 'Helmet', 'Express-Rate-Limit', 'Cookie-Parser'],
     files: [
       'backend/src/server.ts',
-      'backend/src/middleware/sessionMiddleware.js',
+      'backend/src/middleware/sessionMiddleware.ts',
       'backend/src/routes/aiRoutes.ts',
       'backend/src/routes/paymentRoutes.ts',
       'backend/src/services/orderService.ts',

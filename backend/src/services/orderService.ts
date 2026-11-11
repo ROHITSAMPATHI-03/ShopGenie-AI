@@ -18,7 +18,7 @@ export interface OrderItemSnapshotDto {
 export interface OrderDto {
   id: string;
   sessionId: string;
-  status: 'pending' | 'paid' | 'failed' | 'cancelled';
+  status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded' | 'reversed';
   subtotalInrPaise: number;
   subtotalInr: number;
   shippingInrPaise: number;
@@ -246,18 +246,19 @@ export class OrderService {
     const captureResult = await PayPalService.captureOrder(paypalOrderId, payment.idempotency_key);
 
     // 5. Strict Server-Side Verification (SEC-4, SEC-8):
-    // Status must be COMPLETED, capture ID must be present, currency must match, and captured amount must match expected
+    // Status must be COMPLETED, capture ID must be present, currency must match, and captured amount must match expected (integer cents)
     const isStatusCompleted = captureResult.status === 'COMPLETED';
     const isCurrencyMatched = captureResult.currency === order.chargeCurrency;
     const expectedAmountUsd = order.chargeAmountUsd;
-    const isAmountMatched = parseFloat(captureResult.amount).toFixed(2) === parseFloat(expectedAmountUsd).toFixed(2);
+    const capturedCents = Math.round(parseFloat(captureResult.amount || '0') * 100);
+    const isAmountMatched = capturedCents === order.chargeAmountUsdCents;
 
     if (!isStatusCompleted || !captureResult.captureId || !isCurrencyMatched || !isAmountMatched) {
       console.error('[Capture Verification Mismatch]', {
         isStatusCompleted,
         captureId: captureResult.captureId,
         currencyMatch: `${captureResult.currency} vs ${order.chargeCurrency}`,
-        amountMatch: `${captureResult.amount} vs ${expectedAmountUsd}`,
+        amountMatch: `${capturedCents} cents vs ${order.chargeAmountUsdCents} cents (${captureResult.amount} vs ${expectedAmountUsd})`,
       });
 
       db.prepare(`
@@ -306,10 +307,16 @@ export class OrderService {
       return order;
     }
 
+    // Terminal state protection: Never transition refunded or reversed order back to paid
+    if (order.status === 'refunded' || order.status === 'reversed') {
+      console.warn(`[OrderService] Attempted to mark ${order.status} order ${orderId} as paid. Rejected.`);
+      return order;
+    }
+
     const finalizeTransaction = db.transaction(() => {
       // Re-verify current status inside transaction for concurrency safety
       const current = db.prepare('SELECT status FROM orders WHERE id = ?').get(orderId) as any;
-      if (current?.status === 'paid') {
+      if (current?.status === 'paid' || current?.status === 'refunded' || current?.status === 'reversed') {
         return;
       }
 
@@ -370,8 +377,8 @@ export class OrderService {
       throw new Error(`Order ${orderId} not found`);
     }
 
-    // Never overwrite an already paid order
-    if (order.status === 'paid') {
+    // Never overwrite an already settled order
+    if (order.status === 'paid' || order.status === 'refunded' || order.status === 'reversed') {
       return order;
     }
 
@@ -399,7 +406,7 @@ export class OrderService {
       throw new Error(`Order ${orderId} not found`);
     }
 
-    if (order.status === 'paid') {
+    if (order.status === 'paid' || order.status === 'refunded' || order.status === 'reversed' || order.status === 'cancelled') {
       return order;
     }
 
@@ -419,10 +426,36 @@ export class OrderService {
       throw new Error(`Order ${orderId} not found`);
     }
 
+    // Idempotent: already refunded
+    if (order.status === 'refunded') {
+      return order;
+    }
+
     db.prepare("UPDATE orders SET status = 'refunded', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
       .run(orderId);
 
     db.prepare("UPDATE payments SET status = 'REFUNDED', raw_status = 'REFUNDED', updated_at = CURRENT_TIMESTAMP WHERE order_id = ?")
+      .run(orderId);
+
+    return this.getOrderById(orderId)!;
+  }
+
+  static markReversed(orderId: string): OrderDto {
+    const db = getDatabase();
+    const order = this.getOrderById(orderId);
+    if (!order) {
+      throw new Error(`Order ${orderId} not found`);
+    }
+
+    // Idempotent: already reversed
+    if (order.status === 'reversed') {
+      return order;
+    }
+
+    db.prepare("UPDATE orders SET status = 'reversed', updated_at = CURRENT_TIMESTAMP WHERE id = ?")
+      .run(orderId);
+
+    db.prepare("UPDATE payments SET status = 'REVERSED', raw_status = 'REVERSED', updated_at = CURRENT_TIMESTAMP WHERE order_id = ?")
       .run(orderId);
 
     return this.getOrderById(orderId)!;
@@ -435,8 +468,8 @@ export class OrderService {
       throw new Error('Order not found or authorization failed');
     }
 
-    // Invariant: Never overwrite an already paid order! (SEC-7, SEC-8)
-    if (order.status === 'paid') {
+    // Invariant: Never overwrite an already settled order! (SEC-7, SEC-8)
+    if (order.status === 'paid' || order.status === 'refunded' || order.status === 'reversed') {
       return order;
     }
 

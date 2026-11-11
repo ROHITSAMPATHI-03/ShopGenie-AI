@@ -79,5 +79,25 @@ Open your browser to: **`http://localhost:5173`**
 | **1:05 - 1:40** | Comparison matrix | *"Now let's ask: 'Compare the first two.' The assistant executes our side-by-side comparison engine. We see the spec matrix, price differences, and a code-calculated best-value pick."* |
 | **1:40 - 2:25** | Cart & PayPal Checkout | *"I'll add the ThinkPad to my cart. Notice that totals are calculated strictly on the server in integer paise and converted to USD Sandbox cents. Crucially, the AI has zero payment permissions. When I click Checkout and approve in PayPal Sandbox, the server verifies the capture amount and marks it paid."* |
 | **2:25 - 2:45** | Cancellation handling | *"If a customer closes the PayPal popup or cancels, the order is safely marked cancelled, and the cart is kept completely intact."* |
-| **2:45 - 3:00** | Architecture slide | *"Built with React, Express, better-sqlite3, Gemini function calling, and PayPal Orders v2 REST API. Think Smart. Shop Better. Pay Smarter."* |
+| **2:45 - 3:00** | Architecture slide | *"Built with React, Express, Node's built-in sqlite, Gemini function calling, and PayPal Orders v2 REST API. Think Smart. Shop Better. Pay Smarter."* |
+
+---
+
+## 4. PayPal Sandbox Evaluation Checklist & Known Limitations
+
+### Pre-Demo Checklist
+- [ ] Backend running on `http://localhost:4000` (`npm run dev`)
+- [ ] Frontend running on `http://localhost:5173`
+- [ ] Database seeded with 28 products (`npm run seed`)
+- [ ] PayPal Sandbox credentials configured in `.env` (`PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`)
+- [ ] Automated tests 100% passing (`npm test` passes 35/35 tests)
+
+### Important Sandbox Guidelines & Limitations
+1. **Sandbox Buyer Country & Currency Matching**:
+   - PayPal strictly regulates international transactions in sandbox accounts. If your merchant account or app is in India, attempting a USD transaction with an Indian sandbox buyer account ("JD" / John Doe default) can produce: *"To comply with international regulations, this transaction has been declined."*
+   - **Resolution**: In your [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/) > **Testing Tools** > **Sandbox Accounts**, select or create a personal buyer account with **Country: United States (US)**. Use these credentials in the sandbox popup to approve the USD purchase seamlessly.
+2. **Deterministic Fallback Engine**:
+   - If `GEMINI_API_KEY` is omitted, exhausted, or encounters temporary network timeouts, ShopGenie AI immediately engages its local deterministic recommendation engine. Product ranking, multi-criteria scoring, and budget exclusions continue working with 100% fidelity.
+3. **Sandbox vs Production**:
+   - ShopGenie AI runs strictly in PayPal Sandbox mode (`PAYPAL_ENV=sandbox`). No real monetary transactions or real credit cards are processed. All catalog values are converted at a fixed demo rate (`1 INR = $0.012 USD`) for clear sandbox testing.
 

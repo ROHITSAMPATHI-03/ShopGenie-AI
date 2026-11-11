@@ -5,6 +5,9 @@ import { OrderService } from '../services/orderService.js';
 import { ProductService } from '../services/productService.js';
 import { toolDeclarations } from '../tools/toolSchemas.js';
 import { getDatabase } from '../database/db.js';
+import { envSchema } from '../config/env.js';
+import { sessionMiddleware } from '../middleware/sessionMiddleware.js';
+import { paymentRouter, handlePayPalWebhook } from '../routes/paymentRoutes.js';
 
 describe('ShopGenie AI - Security & Trust Boundaries (SEC-1 through SEC-12)', () => {
   const securitySession = 'ses_sec_invariants_99887766';
@@ -98,6 +101,133 @@ describe('ShopGenie AI - Security & Trust Boundaries (SEC-1 through SEC-12)', ()
       expect(response.actions).toContain('Laptop under ₹50,000 for coding');
       expect(response.actions).toContain('Gaming headphones under ₹5,000');
     }, 15000);
+  });
+
+  describe('Session Security, CSRF Protection & Error Sanitization (SEC-1, SEC-2, SEC-6)', () => {
+    it('Rejects weak, short (<32 chars), or sample secrets in production environment', () => {
+      // In production mode, short secret must fail
+      expect(() => {
+        envSchema.parse({
+          NODE_ENV: 'production',
+          FRONTEND_ORIGIN: 'https://shopgenie.example.com',
+          SESSION_SECRET: 'short_secret',
+        });
+      }).toThrow(/SESSION_SECRET of at least 32 characters/);
+
+      // In production mode, default sample secret must fail
+      expect(() => {
+        envSchema.parse({
+          NODE_ENV: 'production',
+          FRONTEND_ORIGIN: 'https://shopgenie.example.com',
+          SESSION_SECRET: 'shopgenie_default_secret_key_hackathon_2026',
+        });
+      }).toThrow(/sample or default secrets/);
+
+      // In production mode, insecure HTTP origin must fail
+      expect(() => {
+        envSchema.parse({
+          NODE_ENV: 'production',
+          FRONTEND_ORIGIN: 'http://shopgenie.example.com',
+          SESSION_SECRET: 'a_very_secure_random_string_with_more_than_32_characters_long_12345678',
+        });
+      }).toThrow(/must use HTTPS in production/);
+
+      // Valid production configuration passes
+      const valid = envSchema.parse({
+        NODE_ENV: 'production',
+        FRONTEND_ORIGIN: 'https://shopgenie.example.com',
+        SESSION_SECRET: 'a_very_secure_random_string_with_more_than_32_characters_long_12345678',
+      });
+      expect(valid.SESSION_SECRET).toBe('a_very_secure_random_string_with_more_than_32_characters_long_12345678');
+    });
+
+    it('Enforces CSRF protection by rejecting state-changing requests from untrusted foreign origins', () => {
+      let statusCode = 200;
+      let responseBody: any = null;
+      let nextCalled = false;
+
+      const mockReq = {
+        method: 'POST',
+        path: '/api/cart/add',
+        headers: {
+          origin: 'https://malicious-attacker-site.com',
+        },
+        cookies: {},
+      } as any;
+
+      const mockRes = {
+        status: (code: number) => {
+          statusCode = code;
+          return {
+            json: (body: any) => {
+              responseBody = body;
+            },
+          };
+        },
+      } as any;
+
+      sessionMiddleware(mockReq, mockRes, () => {
+        nextCalled = true;
+      });
+
+      expect(statusCode).toBe(403);
+      expect(responseBody.error).toMatch(/cross-origin request rejected/i);
+      expect(nextCalled).toBe(false);
+    });
+
+    it('Sanitizes webhook error responses to prevent internal message or stack leakage (SEC-1)', async () => {
+      let statusCode = 200;
+      let responseBody: any = null;
+
+      const mockReq = {
+        body: '{"id": "WH-MALFORMED", "event_type": "UNKNOWN"}',
+        headers: {
+          'x-test-bypass-signature': 'true',
+        },
+      } as any;
+
+      const mockRes = {
+        status: (code: number) => {
+          statusCode = code;
+          return {
+            json: (body: any) => {
+              responseBody = body;
+            },
+          };
+        },
+      } as any;
+
+      await handlePayPalWebhook(mockReq, mockRes);
+
+      if (statusCode === 500) {
+        expect(responseBody).toEqual({ error: 'Webhook processing failed' });
+        expect(responseBody.message).toBeUndefined();
+        expect(responseBody.stack).toBeUndefined();
+      } else {
+        expect(statusCode).toBe(200);
+      }
+    });
+
+    it('Scoping: Public GET /api/paypal/config is exempt from mutation rate limiter', () => {
+      // Verify GET /config route is present and has only 1 handler (exempt from rate limiting)
+      const configRoute = paymentRouter.stack.find((layer: any) => layer.route?.path === '/config');
+      expect(configRoute).toBeDefined();
+      expect((configRoute?.route as any)?.methods?.get).toBe(true);
+      expect(configRoute?.route?.stack?.length).toBe(1);
+
+      // Verify mutation routes (/create-order, /capture-order, /cancel) have rate limiting attached (2 handlers)
+      const createOrderRoute = paymentRouter.stack.find((layer: any) => layer.route?.path === '/create-order');
+      expect(createOrderRoute).toBeDefined();
+      expect(createOrderRoute?.route?.stack?.length).toBe(2);
+
+      const captureOrderRoute = paymentRouter.stack.find((layer: any) => layer.route?.path === '/capture-order');
+      expect(captureOrderRoute).toBeDefined();
+      expect(captureOrderRoute?.route?.stack?.length).toBe(2);
+
+      const cancelRoute = paymentRouter.stack.find((layer: any) => layer.route?.path === '/cancel');
+      expect(cancelRoute).toBeDefined();
+      expect(cancelRoute?.route?.stack?.length).toBe(2);
+    });
   });
 });
 

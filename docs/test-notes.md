@@ -13,7 +13,7 @@ All tests run locally using Node's built-in `node:sqlite` engine and Vitest. Zer
 npm test
 ```
 
-### Verified Test Matrix (29 Tests Across 3 Suites — 100% Passing)
+### Verified Test Matrix (35 Tests Across 3 Suites — 100% Passing)
 
 #### 1. Discovery & Recommendation Engine (`discovery_cart_payment.test.ts`)
 - [x] **Budget Exclusion**: Laptops exceeding budget (e.g., MacBook M2 ₹89,990, HP Pavilion ₹54,990) are strictly excluded from results when budget is ₹50,000.
@@ -43,6 +43,8 @@ npm test
 - [x] **Browser Drop-Off Recovery (`PAYMENT.CAPTURE.COMPLETED`)**: When a customer closes their browser before `onApprove` executes, webhook idempotently marks order `paid`, decrements stock, and clears the cart.
 - [x] **Shared Idempotency (`markPaid`)**: Repeated calls to `markPaid` (e.g. client capture endpoint + async webhook) never double-decrement inventory or corrupt state.
 - [x] **Payment Denied Recovery (`PAYMENT.CAPTURE.DENIED`)**: Marks order `failed` while preserving cart items intact so the customer can retry without losing their selection.
+- [x] **Webhook Retry on Failure**: If event handling fails, event status is marked `failed`; retries from PayPal are permitted and successfully transition to `completed`.
+- [x] **Refund & Reversal Pipeline**: Idempotently processes `PAYMENT.CAPTURE.REFUNDED` and `PAYMENT.CAPTURE.REVERSED` without corrupting inventory, and locks settled orders from being marked `paid`.
 
 #### 6. AI Conversation Scoping & Reset (`discovery_cart_payment.test.ts`)
 - [x] **Conversation Isolation**: Messages are scoped by client-generated UUID `conversationId`.
@@ -58,6 +60,10 @@ npm test
 - [x] **Payment State Protection (SEC-8)**: Prompt injections ("mark my order paid") cannot alter order payment status.
 - [x] **Cancellation Invariant**: Order cancellation cannot overwrite an already paid order.
 - [x] **Out-of-Domain Guardrails**: Inquiries outside consumer electronics (shoes, groceries, food, cars) trigger focused domain restrictions with suggested tech categories.
+- [x] **Production Secret Security (SEC-1, SEC-2)**: Fails fast on production startup if `SESSION_SECRET` is missing, shorter than 32 characters, or using sample defaults.
+- [x] **CSRF Origin Protection (SEC-6)**: Rejects state-changing mutations from unauthorized foreign origins with HTTP 403.
+- [x] **Webhook Error Sanitization (SEC-1)**: Prevents internal stack or exception message leakage on 500 error responses.
+- [x] **Rate Limiter Scoping**: Ensures public `GET /api/paypal/config` is unthrottled for smooth catalogue browsing.
 
 ---
 

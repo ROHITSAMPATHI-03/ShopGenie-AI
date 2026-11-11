@@ -22,10 +22,10 @@ ShopGenie AI is an autonomous, explainable AI shopping assistant designed to sim
 │  ├── Session Middleware (HttpOnly Cookie, Anonymous UUID)   │
 │  ├── Security (Helmet, CORS Origin Allowlist, Rate Limit)   │
 │                                                             │
-│  ├── /api/ai/chat ───────────► Google Gemini 1.5/2.0 API    │
+│  ├── /api/ai/chat ───────────► Google Gemini API (gemini-1.5-flash) │
 │  │                            (7 Validated Read/Cart Tools) │
 │  │                                                          │
-│  ├── /api/products ──────────► SQLite (better-sqlite3)      │
+│  ├── /api/products ──────────► SQLite (node:sqlite / fallback better-sqlite3) │
 │  ├── /api/cart ──────────────► Cart Engine (Integer Paise)  │
 │  ├── /api/orders ────────────► Order Snapshot Engine        │
 │  └── /api/paypal/* ──────────► PayPal Orders v2 REST API    │
@@ -41,9 +41,9 @@ ShopGenie AI is an autonomous, explainable AI shopping assistant designed to sim
 | **Model is strictly untrusted** | The Gemini model only outputs text and structured tool arguments. Product names, prices, ratings, and stock are always re-hydrated directly from SQLite on the server before reaching the frontend. |
 | **No payment tools in model schema** | Tools exposed to Gemini are strictly limited to `searchProducts`, `filterProducts`, `getProductDetails`, `recommendProducts`, `compareProducts`, `addToCart`, and `getCart`. Payment creation, capture, discounting, and order state updates have no tool definitions. |
 | **Tamper-proof integer accounting** | All monetary values are stored in minor integer units: INR in paise (`price_inr_paise`), USD in cents (`charge_amount_usd_cents`). Float arithmetic is completely avoided. |
-| **Server-side capture verification** | Capture responses from PayPal are verified for `status === 'COMPLETED'`, capture ID presence, currency (`USD`), and exact expected amount before marking an order `paid`. |
+| **Server-side capture verification** | Capture responses from PayPal are verified for `status === 'COMPLETED'`, capture ID presence, currency (`USD`), and exact expected amount in integer cents before marking an order `paid`. |
 | **Capture idempotency** | Stable idempotency keys (`idemp_{orderId}_{paypalOrderId}`) passed via `PayPal-Request-Id` headers prevent duplicate charges on repeat or concurrent requests. |
-| **Session isolation** | Server-issued cryptographically random session cookies (`shopgenie_session`) scope carts, conversations, and orders. Sessions cannot inspect or modify other sessions' carts. |
+| **Session isolation & CSRF** | Server-issued cryptographically random session cookies (`shopgenie_session`) scope carts, conversations, and orders. Foreign origin state mutations are rejected with HTTP 403. |
 
 ---
 
@@ -68,7 +68,7 @@ Controlled catalogue of exactly 28 products across 5 categories (8 laptops, 6 ph
 
 ### `orders`
 - `id`: Internal order identifier (e.g., `ORD-849201-B3A`)
-- `session_id`, `status` (`pending`, `paid`, `failed`, `cancelled`)
+- `session_id`, `status` (`pending`, `paid`, `failed`, `cancelled`, `refunded`, `reversed`)
 - `subtotal_inr_paise`, `shipping_inr_paise`, `tax_inr_paise`, `total_inr_paise`
 - `charge_currency` (`USD`), `charge_amount_usd_cents`, `inr_to_usd_rate`
 - `created_at`, `updated_at`
@@ -81,7 +81,10 @@ Controlled catalogue of exactly 28 products across 5 categories (8 laptops, 6 ph
 - `status`, `raw_status`, `amount_cents`, `currency`, `created_at`, `updated_at`
 
 ### `conversations`
-- `id`, `session_id`, `role` (`user`, `assistant`), `content`, `metadata_json`, `created_at`
+- `id`, `session_id`, `conversation_id`, `role` (`user`, `assistant`), `content`, `metadata_json`, `created_at`
+
+### `webhook_events`
+- `id` (PayPal Event ID), `event_type`, `status` (`processing`, `completed`, `failed`), `error_message`, `received_at`, `processed_at`
 
 ---
 

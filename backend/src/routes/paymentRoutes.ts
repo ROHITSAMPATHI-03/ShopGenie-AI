@@ -11,15 +11,13 @@ export const paymentRouter = Router();
 
 const paymentRateLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 20, // 20 payment actions per minute
+  max: 20, // 20 payment mutation actions per minute
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many payment requests. Please try again shortly.' },
 });
 
-paymentRouter.use(paymentRateLimiter);
-
-// Public sandbox config for frontend PayPal Buttons
+// Public sandbox config for frontend PayPal Buttons (unthrottled for smooth catalog browsing)
 paymentRouter.get('/config', (req: any, res: Response) => {
   res.json({
     clientId: env.PAYPAL_CLIENT_ID || '',
@@ -34,7 +32,7 @@ const createOrderSchema = z.object({
   orderId: z.string().min(1),
 });
 
-paymentRouter.post('/create-order', async (req: any, res: Response) => {
+paymentRouter.post('/create-order', paymentRateLimiter, async (req: any, res: Response) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const parsed = createOrderSchema.safeParse(req.body);
@@ -56,7 +54,7 @@ const captureOrderSchema = z.object({
   orderId: z.string().min(1),
 });
 
-paymentRouter.post('/capture-order', async (req: any, res: Response) => {
+paymentRouter.post('/capture-order', paymentRateLimiter, async (req: any, res: Response) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const parsed = captureOrderSchema.safeParse(req.body);
@@ -77,7 +75,7 @@ const cancelOrderSchema = z.object({
   orderId: z.string().min(1),
 });
 
-paymentRouter.post('/cancel', (req: any, res: Response) => {
+paymentRouter.post('/cancel', paymentRateLimiter, (req: any, res: Response) => {
   try {
     const authReq = req as AuthenticatedRequest;
     const parsed = cancelOrderSchema.safeParse(req.body);
@@ -95,12 +93,13 @@ paymentRouter.post('/cancel', (req: any, res: Response) => {
 });
 
 export async function handlePayPalWebhook(req: Request, res: Response): Promise<void> {
+  let eventId: string | undefined;
   try {
     const rawBody = Buffer.isBuffer(req.body)
       ? req.body.toString('utf8')
       : typeof req.body === 'string'
-      ? req.body
-      : JSON.stringify(req.body || {});
+        ? req.body
+        : JSON.stringify(req.body || {});
 
     // 1. Verify webhook signature via PayPal API (or test bypass hook)
     const isValid = await PayPalService.verifyWebhookSignature(req.headers as any, rawBody);
@@ -117,7 +116,7 @@ export async function handlePayPalWebhook(req: Request, res: Response): Promise<
       return;
     }
 
-    const eventId = event?.id;
+    eventId = event?.id;
     const eventType = event?.event_type;
 
     if (!eventId || !eventType) {
@@ -125,15 +124,23 @@ export async function handlePayPalWebhook(req: Request, res: Response): Promise<
       return;
     }
 
-    // 2. Deduplication: check webhook_events table
+    // 2. Deduplication & Retry Check: inspect webhook_events table
     const db = getDatabase();
-    const existing = db.prepare('SELECT id FROM webhook_events WHERE id = ?').get(eventId);
-    if (existing) {
+    const existing = db.prepare('SELECT id, status FROM webhook_events WHERE id = ?').get(eventId) as
+      | { id: string; status: string }
+      | undefined;
+
+    if (existing && existing.status === 'completed') {
       res.status(200).json({ received: true, deduplicated: true });
       return;
     }
 
-    db.prepare('INSERT INTO webhook_events (id, event_type) VALUES (?, ?)').run(eventId, eventType);
+    // Record or update event in 'processing' status to track retries cleanly
+    if (existing) {
+      db.prepare("UPDATE webhook_events SET status = 'processing', error_message = NULL WHERE id = ?").run(eventId);
+    } else {
+      db.prepare("INSERT INTO webhook_events (id, event_type, status) VALUES (?, ?, 'processing')").run(eventId, eventType);
+    }
 
     // 3. Process supported events
     switch (eventType) {
@@ -172,6 +179,7 @@ export async function handlePayPalWebhook(req: Request, res: Response): Promise<
               expectedCurrency,
             });
             OrderService.markFailed(order.id, 'Webhook amount/currency mismatch');
+            db.prepare("UPDATE webhook_events SET status = 'completed', processed_at = CURRENT_TIMESTAMP WHERE id = ?").run(eventId);
             res.status(200).json({ received: true, error: 'Amount or currency mismatch' });
             return;
           }
@@ -211,8 +219,7 @@ export async function handlePayPalWebhook(req: Request, res: Response): Promise<
         break;
       }
 
-      case 'PAYMENT.CAPTURE.REFUNDED':
-      case 'PAYMENT.CAPTURE.REVERSED': {
+      case 'PAYMENT.CAPTURE.REFUNDED': {
         const captureId = event.resource?.id;
         const paypalOrderId = event.resource?.supplementary_data?.related_ids?.order_id || event.resource?.order_id;
         const customId = event.resource?.custom_id;
@@ -227,15 +234,39 @@ export async function handlePayPalWebhook(req: Request, res: Response): Promise<
         break;
       }
 
+      case 'PAYMENT.CAPTURE.REVERSED': {
+        const captureId = event.resource?.id;
+        const paypalOrderId = event.resource?.supplementary_data?.related_ids?.order_id || event.resource?.order_id;
+        const customId = event.resource?.custom_id;
+
+        let order = paypalOrderId ? OrderService.getOrderByPayPalOrderId(paypalOrderId) : null;
+        if (!order && captureId) order = OrderService.getOrderByPayPalCaptureId(captureId);
+        if (!order && customId) order = OrderService.getOrderById(customId);
+
+        if (order) {
+          OrderService.markReversed(order.id);
+        }
+        break;
+      }
+
       default:
         // Other events received and acknowledged without error
         break;
     }
 
+    db.prepare("UPDATE webhook_events SET status = 'completed', processed_at = CURRENT_TIMESTAMP WHERE id = ?").run(eventId);
     res.status(200).json({ received: true });
   } catch (error: any) {
     console.error('[PayPal Webhook Exception]', error);
-    res.status(500).json({ error: 'Webhook processing failed', message: error.message });
+    try {
+      if (eventId) {
+        const db = getDatabase();
+        db.prepare("UPDATE webhook_events SET status = 'failed', error_message = ? WHERE id = ?")
+          .run(String(error?.message || 'Processing failed').slice(0, 500), eventId);
+      }
+    } catch { }
+    // Sanitize response: never leak error.message to external clients (SEC-1)
+    res.status(500).json({ error: 'Webhook processing failed' });
   }
 }
 

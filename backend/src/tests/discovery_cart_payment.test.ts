@@ -400,6 +400,134 @@ describe('ShopGenie AI - Comprehensive Verification Suite', () => {
       const refreshedCart = CartService.getCart(webhookSession);
       expect(refreshedCart.itemCount).toBe(1);
     });
+
+    it('Allows webhook retry when previous execution failed instead of wrongly treating as deduplicated', async () => {
+      CartService.addItem(webhookSession, 'AUD-001', 1);
+      const order = OrderService.createOrderFromCart(webhookSession);
+      const db = getDatabase();
+      const fakePaypalOrderId = `PAYPAL-RETRY-TEST-${Date.now()}`;
+      const fakeCaptureId = `CAP-RETRY-TEST-${Date.now()}`;
+      const eventId = `WH-RETRY-${Date.now()}`;
+
+      db.prepare(`
+        INSERT INTO payments (id, order_id, paypal_order_id, idempotency_key, status, amount_cents, currency)
+        VALUES (?, ?, ?, ?, 'CREATED', ?, ?)
+      `).run(`pay_${Date.now()}`, order.id, fakePaypalOrderId, `idemp_${order.id}`, order.chargeAmountUsdCents, order.chargeCurrency);
+
+      // Event payload with invalid/mismatched event type or simulating handler exception
+      // We simulate a failed webhook event by pre-marking or triggering error
+      db.prepare("INSERT INTO webhook_events (id, event_type, status, error_message) VALUES (?, 'PAYMENT.CAPTURE.COMPLETED', 'failed', 'Simulated transient network failure')")
+        .run(eventId);
+
+      // Verify DB shows failed
+      const failedEntry = db.prepare('SELECT status FROM webhook_events WHERE id = ?').get(eventId) as any;
+      expect(failedEntry.status).toBe('failed');
+
+      // Now PayPal retries the exact same event ID with valid completed resource
+      const retryEvent = {
+        id: eventId,
+        event_type: 'PAYMENT.CAPTURE.COMPLETED',
+        resource: {
+          id: fakeCaptureId,
+          order_id: fakePaypalOrderId,
+          amount: { value: order.chargeAmountUsd, currency_code: order.chargeCurrency },
+        },
+      };
+
+      const mockRetry = createMockReqRes(retryEvent, { 'x-test-bypass-signature': 'true' });
+      await handlePayPalWebhook(mockRetry.req, mockRetry.res);
+
+      expect(mockRetry.res.statusCode).toBe(200);
+      expect(mockRetry.res.body.received).toBe(true);
+      // It should NOT have been skipped as deduplicated!
+      expect(mockRetry.res.body.deduplicated).toBeUndefined();
+
+      // Order is now successfully paid
+      const paidOrder = OrderService.getOrderById(order.id);
+      expect(paidOrder?.status).toBe('paid');
+
+      // Database event record is now updated to completed
+      const completedEntry = db.prepare('SELECT status FROM webhook_events WHERE id = ?').get(eventId) as any;
+      expect(completedEntry.status).toBe('completed');
+
+      // A third delivery of the now-completed event should be properly deduplicated
+      const mockThird = createMockReqRes(retryEvent, { 'x-test-bypass-signature': 'true' });
+      await handlePayPalWebhook(mockThird.req, mockThird.res);
+      expect(mockThird.res.statusCode).toBe(200);
+      expect(mockThird.res.body.deduplicated).toBe(true);
+    });
+
+    it('Processes PAYMENT.CAPTURE.REFUNDED and PAYMENT.CAPTURE.REVERSED idempotently and locks order from being marked paid', async () => {
+      CartService.addItem(webhookSession, 'AUD-002', 1);
+      const order = OrderService.createOrderFromCart(webhookSession);
+      const db = getDatabase();
+      const fakePaypalOrderId = `PAYPAL-REFUND-${Date.now()}`;
+      const fakeCaptureId = `CAP-REFUND-${Date.now()}`;
+
+      db.prepare(`
+        INSERT INTO payments (id, order_id, paypal_order_id, idempotency_key, status, amount_cents, currency)
+        VALUES (?, ?, ?, ?, 'CREATED', ?, ?)
+      `).run(`pay_${Date.now()}`, order.id, fakePaypalOrderId, `idemp_${order.id}`, order.chargeAmountUsdCents, order.chargeCurrency);
+
+      // First mark order as paid
+      OrderService.markPaid(order.id, fakeCaptureId);
+      expect(OrderService.getOrderById(order.id)?.status).toBe('paid');
+
+      // Deliver PAYMENT.CAPTURE.REFUNDED
+      const refundEvent = {
+        id: `WH-REFUND-${Date.now()}`,
+        event_type: 'PAYMENT.CAPTURE.REFUNDED',
+        resource: {
+          id: fakeCaptureId,
+          order_id: fakePaypalOrderId,
+        },
+      };
+
+      const mockRefund = createMockReqRes(refundEvent, { 'x-test-bypass-signature': 'true' });
+      await handlePayPalWebhook(mockRefund.req, mockRefund.res);
+      expect(mockRefund.res.statusCode).toBe(200);
+
+      const refundedOrder = OrderService.getOrderById(order.id);
+      expect(refundedOrder?.status).toBe('refunded');
+
+      // Stale or duplicate markPaid attempts on refunded order must be safely rejected
+      OrderService.markPaid(order.id, fakeCaptureId);
+      expect(OrderService.getOrderById(order.id)?.status).toBe('refunded');
+
+      // Test reversal on another order
+      CartService.addItem(webhookSession, 'AUD-002', 1);
+      const order2 = OrderService.createOrderFromCart(webhookSession);
+      const fakePaypalOrderId2 = `PAYPAL-REVERSE-${Date.now()}`;
+      const fakeCaptureId2 = `CAP-REVERSE-${Date.now()}`;
+
+      db.prepare(`
+        INSERT INTO payments (id, order_id, paypal_order_id, idempotency_key, status, amount_cents, currency)
+        VALUES (?, ?, ?, ?, 'CREATED', ?, ?)
+      `).run(`pay_${Date.now()}`, order2.id, fakePaypalOrderId2, `idemp_${order2.id}`, order2.chargeAmountUsdCents, order2.chargeCurrency);
+
+      OrderService.markPaid(order2.id, fakeCaptureId2);
+      expect(OrderService.getOrderById(order2.id)?.status).toBe('paid');
+
+      const reverseEvent = {
+        id: `WH-REVERSE-${Date.now()}`,
+        event_type: 'PAYMENT.CAPTURE.REVERSED',
+        resource: {
+          id: fakeCaptureId2,
+          order_id: fakePaypalOrderId2,
+        },
+      };
+
+      const mockReverse = createMockReqRes(reverseEvent, { 'x-test-bypass-signature': 'true' });
+      await handlePayPalWebhook(mockReverse.req, mockReverse.res);
+      expect(mockReverse.res.statusCode).toBe(200);
+
+      const reversedOrder = OrderService.getOrderById(order2.id);
+      expect(reversedOrder?.status).toBe('reversed');
+
+      // Stale markPaid attempt on reversed order must also be safely rejected
+      OrderService.markPaid(order2.id, fakeCaptureId2);
+      expect(OrderService.getOrderById(order2.id)?.status).toBe('reversed');
+    });
   });
 
   describe('6. AI Conversation Scoping & Reset (Item 2)', () => {

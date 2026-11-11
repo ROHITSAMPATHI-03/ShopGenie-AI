@@ -10,6 +10,43 @@ export interface AuthenticatedRequest extends Request {
 }
 
 export function sessionMiddleware(req: Request, res: Response, next: NextFunction): void {
+  // CSRF Origin validation on state-changing requests
+  const method = req.method.toUpperCase();
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    // Exempt PayPal webhook (incoming from PayPal IPN/webhook infrastructure)
+    if (req.path !== '/api/paypal/webhook' && !req.originalUrl?.includes('/api/paypal/webhook')) {
+      const origin = req.headers.origin || req.headers.referer;
+      if (origin && typeof origin === 'string') {
+        try {
+          const originUrl = new URL(origin);
+          const allowedOrigins = [
+            env.FRONTEND_ORIGIN,
+            'http://localhost:5173',
+            'http://127.0.0.1:5173',
+            'http://localhost:4000',
+            'http://127.0.0.1:4000',
+          ];
+          const isAllowed = allowedOrigins.some(allowed => {
+            try {
+              const u = new URL(allowed);
+              return originUrl.origin === u.origin;
+            } catch {
+              return false;
+            }
+          });
+
+          if (!isAllowed) {
+            console.warn('[Security Warning] Blocked potential CSRF request from origin:', origin);
+            res.status(403).json({ error: 'Forbidden: cross-origin request rejected' });
+            return;
+          }
+        } catch {
+          // If URL parsing fails for origin header, continue
+        }
+      }
+    }
+  }
+
   const db = getDatabase();
   let sessionId = req.cookies?.[SESSION_COOKIE_NAME];
 
