@@ -3,7 +3,8 @@
  * All requests include credentials for server-issued anonymous session cookies
  */
 
-const API_BASE = '/api';
+const envApiUrl = import.meta.env.VITE_API_URL;
+const API_BASE = envApiUrl ? `${envApiUrl.replace(/\/+$/, '')}/api` : '/api';
 
 async function fetchJson<T>(url: string, options: RequestInit = {}): Promise<T> {
   const defaultHeaders: Record<string, string> = {

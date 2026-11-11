@@ -2,6 +2,9 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { getDatabase } from './database/db.js';
 import { seedCatalogue } from './database/seed.js';
@@ -12,6 +15,9 @@ import { cartRouter } from './routes/cartRoutes.js';
 import { orderRouter } from './routes/orderRoutes.js';
 import { paymentRouter, handlePayPalWebhook } from './routes/paymentRoutes.js';
 import { aiRouter } from './routes/aiRoutes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export const app = express();
 
@@ -68,10 +74,23 @@ app.use('/api/orders', orderRouter);
 app.use('/api/paypal', paymentRouter);
 app.use('/api/ai', aiRouter);
 
-// 7. Global 404 Handler
-app.use((req: Request, res: Response) => {
-  res.status(404).json({ error: 'Endpoint not found' });
-});
+// 7. Serve Static Frontend in Production / Unified Mode
+const frontendDist = path.resolve(__dirname, '../../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  app.get('*', (req: Request, res: Response) => {
+    if (!req.path.startsWith('/api')) {
+      res.sendFile(path.join(frontendDist, 'index.html'));
+    } else {
+      res.status(404).json({ error: 'Endpoint not found' });
+    }
+  });
+} else {
+  // Global 404 Handler if frontend is not built locally
+  app.use((req: Request, res: Response) => {
+    res.status(404).json({ error: 'Endpoint not found' });
+  });
+}
 
 // 8. Global Error Handler
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
