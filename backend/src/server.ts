@@ -32,7 +32,49 @@ app.use(
 // 2. Strict CORS
 app.use(
   cors({
-    origin: [env.FRONTEND_ORIGIN, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: (requestOrigin, callback) => {
+      // 1. Same-origin, server-to-server, or non-browser requests without Origin header
+      if (!requestOrigin) return callback(null, true);
+
+      const allowedOrigins = [
+        env.FRONTEND_ORIGIN,
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:4000',
+        'http://127.0.0.1:4000',
+      ];
+
+      try {
+        const reqUrl = new URL(requestOrigin);
+
+        // Exact match with configured FRONTEND_ORIGIN or local dev origins
+        const isExplicitAllowed = allowedOrigins.some(allowed => {
+          try {
+            return reqUrl.origin === new URL(allowed).origin;
+          } catch {
+            return false;
+          }
+        });
+
+        if (isExplicitAllowed) {
+          return callback(null, true);
+        }
+
+        // Local development origin match
+        if (env.NODE_ENV !== 'production' && (reqUrl.hostname === 'localhost' || reqUrl.hostname === '127.0.0.1')) {
+          return callback(null, true);
+        }
+
+        // Cloud hosting subdomains (e.g. *.onrender.com or *.railway.app for the deployed app)
+        if (reqUrl.hostname.endsWith('.onrender.com') || reqUrl.hostname.endsWith('.railway.app')) {
+          return callback(null, true);
+        }
+
+        return callback(null, false);
+      } catch {
+        return callback(null, false);
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'PayPal-Request-Id'],

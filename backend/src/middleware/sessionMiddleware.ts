@@ -19,6 +19,17 @@ export function sessionMiddleware(req: Request, res: Response, next: NextFunctio
       if (origin && typeof origin === 'string') {
         try {
           const originUrl = new URL(origin);
+          const forwardedHost = (req.headers['x-forwarded-host'] as string)?.split(',')[0]?.trim();
+          const hostHeader = forwardedHost || req.headers.host;
+
+          // Verify same-origin: incoming Host/X-Forwarded-Host matches Origin host
+          const isSameOrigin = Boolean(
+            hostHeader && (
+              originUrl.host === hostHeader ||
+              originUrl.host === hostHeader.split(':')[0]
+            )
+          );
+
           const allowedOrigins = env.NODE_ENV === 'production'
             ? [env.FRONTEND_ORIGIN]
             : [
@@ -28,7 +39,7 @@ export function sessionMiddleware(req: Request, res: Response, next: NextFunctio
                 'http://localhost:4000',
                 'http://127.0.0.1:4000',
               ];
-          const isAllowed = allowedOrigins.some(allowed => {
+          const isAllowed = isSameOrigin || allowedOrigins.some(allowed => {
             try {
               const u = new URL(allowed);
               return originUrl.origin === u.origin;

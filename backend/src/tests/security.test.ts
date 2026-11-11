@@ -175,6 +175,36 @@ describe('ShopGenie AI - Security & Trust Boundaries (SEC-1 through SEC-12)', ()
       expect(nextCalled).toBe(false);
     });
 
+    it('Permits same-origin requests when Host or X-Forwarded-Host matches Origin', () => {
+      let statusCode = 200;
+      let nextCalled = false;
+
+      const mockReq = {
+        method: 'POST',
+        path: '/api/cart/add',
+        headers: {
+          origin: 'https://shopgenie-ai-km58.onrender.com',
+          'x-forwarded-host': 'shopgenie-ai-km58.onrender.com',
+        },
+        cookies: {},
+      } as any;
+
+      const mockRes = {
+        status: (code: number) => {
+          statusCode = code;
+          return { json: () => {} };
+        },
+        cookie: () => {},
+      } as any;
+
+      sessionMiddleware(mockReq, mockRes, () => {
+        nextCalled = true;
+      });
+
+      expect(statusCode).toBe(200);
+      expect(nextCalled).toBe(true);
+    });
+
     it('Sanitizes webhook error responses to prevent internal message or stack leakage (SEC-1)', async () => {
       let statusCode = 200;
       let responseBody: any = null;

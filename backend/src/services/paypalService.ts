@@ -68,8 +68,9 @@ export class PayPalService {
     return data.access_token;
   }
 
-  static async createOrder(orderId: string, amountUsdString: string): Promise<PayPalCreateOrderResult> {
+  static async createOrder(orderId: string, amountUsdString: string, originBase?: string): Promise<PayPalCreateOrderResult> {
     const accessToken = await this.getAccessToken();
+    const returnBase = originBase || env.FRONTEND_ORIGIN;
 
     const payload = {
       intent: 'CAPTURE',
@@ -87,8 +88,8 @@ export class PayPalService {
         brand_name: 'ShopGenie AI',
         landing_page: 'NO_PREFERENCE',
         user_action: 'PAY_NOW',
-        return_url: `${env.FRONTEND_ORIGIN}/order-confirmation/${orderId}`,
-        cancel_url: `${env.FRONTEND_ORIGIN}/checkout`,
+        return_url: `${returnBase}/order-confirmation/${orderId}`,
+        cancel_url: `${returnBase}/checkout`,
       },
     };
 

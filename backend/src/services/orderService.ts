@@ -181,7 +181,7 @@ export class OrderService {
     return rows.map(r => this.getOrderById(r.id, sessionId)!).filter(Boolean);
   }
 
-  static async initiatePayPalPayment(sessionId: string, orderId: string): Promise<{ paypalOrderId: string }> {
+  static async initiatePayPalPayment(sessionId: string, orderId: string, originBase?: string): Promise<{ paypalOrderId: string }> {
     const order = this.getOrderById(orderId, sessionId);
     if (!order) {
       throw new Error('Order not found or does not belong to session');
@@ -204,7 +204,7 @@ export class OrderService {
     }
 
     // Call PayPal Orders v2 API with the database-frozen USD charge
-    const created = await PayPalService.createOrder(order.id, order.chargeAmountUsd);
+    const created = await PayPalService.createOrder(order.id, order.chargeAmountUsd, originBase);
 
     const paymentId = `pay_${crypto.randomBytes(12).toString('hex')}`;
     const idempotencyKey = `idemp_${order.id}_${created.id}`;

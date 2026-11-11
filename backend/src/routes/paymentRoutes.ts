@@ -42,7 +42,10 @@ paymentRouter.post('/create-order', paymentRateLimiter, async (req: any, res: Re
     }
 
     const { orderId } = parsed.data;
-    const result = await OrderService.initiatePayPalPayment(authReq.sessionId, orderId);
+    const host = (req.headers['x-forwarded-host'] as string)?.split(',')[0]?.trim() || req.headers.host;
+    const proto = (req.headers['x-forwarded-proto'] as string)?.split(',')[0]?.trim() || (req.secure ? 'https' : 'http');
+    const requestBase = host ? `${proto}://${host}` : undefined;
+    const result = await OrderService.initiatePayPalPayment(authReq.sessionId, orderId, requestBase);
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ error: error.message || 'Failed to initialize PayPal order' });
