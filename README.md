@@ -1,191 +1,504 @@
-# ShopGenie AI
+🛍️ ShopGenie AI
 
-> **Tagline**: *Think Smart. Shop Better. Pay Smarter.*  
-> **Defining Principle**: *Autonomous discovery. Human-approved purchase.*
+«Think Smart. Shop Better. Pay Smarter.
 
-An AI-powered autonomous shopping assistant with intelligent product discovery, explainable recommendations, and secure PayPal Sandbox checkout—with the customer always in control of the final purchase.
+Autonomous discovery. Human-approved purchase.»
 
----
+An AI-powered shopping assistant that helps users discover products through natural-language conversations, receive explainable recommendations, compare products and complete purchases through PayPal Sandbox checkout.
 
-## Highlights
-
-- **Autonomous Discovery**: Natural language shopping queries parsed into structured criteria (budget, category, usage persona, priorities).
-- **Deterministic Multi-Factor Ranking**: Transparent code computes scores (0–100) based on budget fit, usage profiles (student, programmer, gamer, video editor, everyday), priorities, and ratings.
-- **Explainable AI**: Every recommendation clearly lists matched requirements and honest trade-offs.
-- **Side-by-Side Comparison**: Compare 2 to 4 products with full spec matrix, price difference analysis, and code-selected best-value pick.
-- **Zero-Trust Payment Boundary**: The AI model has zero access to payment creation, capture, or price alteration tools.
-- **Server-Verified PayPal Checkout**: Orders snapshot prices in integer paise and USD cents; capture is verified on the server for status (`COMPLETED`), currency, and exact expected amount before marking paid.
-- **Session-Scoped History**: Anonymous sessions survive page refreshes and backend restarts with SQLite persistence.
+Customers remain in control of every purchase.
 
 ---
 
-## Tech Stack
+🚀 Live Demo
 
-| Layer | Technologies |
-| :--- | :--- |
-| **Frontend** | React 18, Vite, TypeScript, Tailwind CSS, Lucide Icons, `@paypal/react-paypal-js` |
-| **Backend** | Node.js (v20+), Express 4, TypeScript, built-in `node:sqlite` (with `better-sqlite3` fallback), `zod`, `helmet`, `cors`, `express-rate-limit` |
-| **AI Integration** | Google Gemini API model `gemini-2.5-flash` (via OpenAI-compatible endpoint; `@google/generative-ai` provides schema types) with 7 validated shopping tools |
-| **Payments** | PayPal Orders v2 REST API + PayPal JS SDK (Sandbox Mode) |
-| **Testing** | Vitest, Supertest (39 automated tests passing — 100% passing) |
+Resource| Link
+🌐 Live Application| "ShopGenie AI" (https://shopgenie-ai-km58.onrender.com)
+💻 GitHub Repository| "ShopGenie AI Source Code" (https://github.com/ROHITSAMPATHI-03/ShopGenie-AI)
+🎥 Demo video |https://youtu.be/xz-UZdAqr1I?si=e8POUIggjxvEz408
+
+Hosting: Render
+
+«Demo availability: The application runs on Render's free tier. The service may take some time to respond after periods of inactivity.»
+
+What You Can Try
+
+1. Enter a natural-language shopping request.
+2. Explore AI-assisted product discovery.
+3. View ranked recommendations and their explanations.
+4. Compare multiple products.
+5. Add products to your shopping cart.
+6. Review your order and proceed to PayPal Sandbox checkout.
+7. Approve a test payment using PayPal Sandbox buyer credentials.
 
 ---
 
-## Quick Start (Under 2 Minutes)
+✨ Key Features
 
-### 1. Prerequisites
-- Node.js (v18+ or v20 LTS recommended)
-- npm or pnpm
+1. AI-Powered Product Discovery
 
-### 2. Installation
-```bash
-# Clone the repository
+- Understands natural-language shopping requests.
+- Extracts structured requirements such as budget, category, usage and preferences.
+- Uses Google Gemini 2.5 Flash to coordinate product discovery.
+- Supports seven validated shopping tools.
+- Provides a deterministic fallback for supported discovery operations when AI is unavailable.
+
+2. Explainable Product Recommendations
+
+- Deterministic multi-factor product ranking.
+- Scores recommendations on a 0–100 scale.
+- Considers budget fit, usage profiles, priorities, ratings and brand preferences.
+- Explains matched requirements and product trade-offs.
+
+3. Side-by-Side Product Comparison
+
+- Compare 2–4 products.
+- View specifications in a comparison matrix.
+- Analyse price differences.
+- Identify the best-value option using backend ranking logic.
+
+4. Shopping Cart Management
+
+- Add and remove products.
+- Update quantities.
+- Calculate totals using integer paise to avoid floating-point rounding errors.
+- Retrieve product prices from the backend rather than trusting client-provided prices.
+
+5. PayPal Sandbox Checkout
+
+- PayPal Orders v2 REST API integration.
+- PayPal JavaScript SDK checkout interface.
+- Backend-controlled order creation and capture.
+- Server-side payment status, currency and amount verification.
+- Webhook signature verification and event deduplication.
+
+6. Human-Approved Purchases
+
+ShopGenie AI follows a clear separation between AI-powered product discovery and financial transactions.
+
+The purchase flow works as follows:
+
+1. The AI helps the customer discover suitable products.
+2. The customer selects products and adds them to the cart.
+3. The checkout page presents the order details and payment summary.
+4. The customer reviews the order and explicitly initiates PayPal checkout.
+5. PayPal displays its approval interface.
+6. The customer reviews and approves the Sandbox transaction.
+7. The backend captures and verifies the payment before confirming the order.
+
+Important security principle: Gemini does not have direct access to payment creation, payment capture, price modification or order-payment confirmation operations. These operations remain controlled by the backend.
+
+---
+
+🧠 How AI Works
+
+ShopGenie AI uses Google Gemini 2.5 Flash as its conversational shopping assistant.
+
+AI Workflow
+
+1. User enters a shopping request in natural language.
+2. Gemini interprets the request and extracts shopping requirements.
+3. The assistant coordinates validated shopping tools.
+4. The backend retrieves suitable products from the catalogue.
+5. A deterministic recommendation engine calculates product scores.
+6. The application displays ranked recommendations with explanations and trade-offs.
+
+Recommendation Scoring
+
+The backend uses a weighted multi-factor scoring system:
+
+Factor| Weight
+Budget Fit| 25%
+Usage Fit| 30%
+Priority Match| 25%
+Rating| 10%
+Brand Preference| 10%
+Total| 100%
+
+The recommendation engine applies budget constraints and evaluates product suitability before presenting the results.
+
+This approach combines conversational AI with predictable backend decision-making.
+
+---
+
+💳 PayPal Integration
+
+ShopGenie AI integrates the PayPal Developer Platform using its free Sandbox environment.
+
+Technologies Used
+
+1. PayPal Orders v2 REST API
+
+- Creates payment orders.
+- Captures approved payments.
+- Verifies payment status and transaction details.
+
+2. PayPal JavaScript SDK
+
+- Provides the frontend checkout experience.
+- Allows customers to approve their Sandbox payments.
+
+3. PayPal Webhooks
+
+- Handles payment lifecycle events.
+- Verifies webhook signatures.
+- Uses event deduplication to help prevent duplicate processing.
+
+Payment Security
+
+The backend independently verifies:
+
+- Expected payment amount.
+- Transaction currency.
+- Payment completion status.
+- Order state before confirmation.
+
+Prices are stored and calculated using integer paise and USD cents to reduce floating-point calculation errors.
+
+Environment: PayPal Sandbox only. No real-money transactions are processed.
+
+---
+
+🏗️ System Architecture
+
+ShopGenie AI uses a full-stack architecture consisting of a React frontend, Node.js backend, AI integration, SQLite database and PayPal payment services.
+
+              CUSTOMER
+                  |
+                  v
+          REACT FRONTEND
+          (Vite + TypeScript)
+                  |
+                  v
+          EXPRESS BACKEND
+                  |
+          +-------+-------+
+          |               |
+          v               v
+     GEMINI API       SQLITE DATABASE
+          |               |
+          v               v
+    AI SHOPPING       PRODUCT CATALOGUE
+      ASSISTANT        CART & ORDERS
+          |
+          v
+   VALIDATED SHOPPING TOOLS
+          |
+          v
+   DETERMINISTIC RANKING
+          |
+          v
+   PRODUCT RECOMMENDATIONS
+          |
+          v
+      CUSTOMER CART
+          |
+          v
+    PAYPAL CHECKOUT
+          |
+          v
+    USER APPROVAL
+          |
+          v
+   BACKEND CAPTURE &
+   PAYMENT VERIFICATION
+          |
+          v
+     ORDER CONFIRMATION
+
+---
+
+🛠️ Technology Stack
+
+Layer| Technologies
+Frontend| React 18, Vite, TypeScript, Tailwind CSS
+Backend| Node.js 20+, Express 4, TypeScript
+AI| Google Gemini 2.5 Flash
+AI Integration| Google AI Studio OpenAI-compatible endpoint
+Payments| PayPal Orders v2 REST API
+Checkout| PayPal JavaScript SDK, "@paypal/react-paypal-js"
+Database| SQLite, "node:sqlite", "better-sqlite3" fallback
+Validation| Zod
+Security| Helmet, CORS, express-rate-limit
+Testing| Vitest, Supertest
+Hosting| Render
+
+---
+
+⚙️ Local Installation and Setup
+
+Prerequisites
+
+- Node.js 20 or later.
+- npm or pnpm.
+- Google Gemini API key.
+- PayPal Developer Sandbox application credentials.
+
+1. Clone the Repository
+
 git clone https://github.com/ROHITSAMPATHI-03/ShopGenie-AI.git
+
 cd ShopGenie-AI
 
-# Install all dependencies (root, frontend & backend)
-npm run install:all
-```
+2. Install Dependencies
 
-### 3. Environment Setup
-Copy `.env.example` to `.env`:
-```bash
-# Windows PowerShell
+npm run install:all
+
+3. Configure Environment Variables
+
+Copy ".env.example" to ".env".
+
+Windows PowerShell:
+
 Copy-Item .env.example .env
 
-# macOS / Linux
+Linux / macOS:
+
 cp .env.example .env
-```
 
-> [!IMPORTANT]
-> **Existing `.env` Notice**: If you have an existing `.env` file from earlier runs, please update `GEMINI_MODEL=gemini-2.5-flash`. Existing `.env` files take precedence over defaults.
+Configure the required credentials:
 
-Configure your credentials in `.env`:
-```env
-# Gemini API Key (Optional for basic discovery; deterministic fallback active if omitted)
-# Agent loop communicates via Google AI Studio's OpenAI-compatible endpoint (/v1beta/openai/chat/completions)
-GEMINI_API_KEY=your_gemini_api_key_here
+# Google Gemini
+GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini-2.5-flash
 
-# PayPal Sandbox Credentials (Required for live Sandbox popup approval)
-PAYPAL_CLIENT_ID=your_paypal_sandbox_client_id
-PAYPAL_CLIENT_SECRET=your_paypal_sandbox_client_secret
-PAYPAL_WEBHOOK_ID=your_paypal_sandbox_webhook_id
+# PayPal Sandbox
+PAYPAL_CLIENT_ID=your_sandbox_client_id
+PAYPAL_CLIENT_SECRET=your_sandbox_client_secret
+PAYPAL_WEBHOOK_ID=your_sandbox_webhook_id
 PAYPAL_ENV=sandbox
 
-# Currency & Rates (PayPal Sandbox charges in USD using fixed demo rate)
+# Currency Configuration
 CHARGE_CURRENCY=USD
 INR_TO_USD=0.012
 
-# Server & Session Security
+# Application Configuration
 FRONTEND_ORIGIN=http://localhost:5173
-# Generate 32+ character secret: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-# If omitted in development, a secure 32-byte secret is auto-generated at startup.
-SESSION_SECRET=
+SESSION_SECRET=your_secure_session_secret
 DATABASE_PATH=./data/shopgenie.db
 PORT=4000
-```
 
-### 4. Seed Catalogue Data
-Populates the database with 28 curated products across 5 categories:
-```bash
+Note: Gemini credentials are optional for supported deterministic fallback operations. PayPal Sandbox credentials are required for payment testing.
+
+Never commit ".env" files or expose API secrets in frontend code.
+
+4. Seed the Product Catalogue
+
+The application includes 28 curated products across five categories.
+
 npm run seed
-```
 
-### 5. Start Development (Single-Command Startup)
-```bash
-# Starts both Backend (port 4000 with node --watch) and Frontend (port 5173 with Vite /api proxy) concurrently:
+5. Start the Application
+
 npm run dev:all
-```
 
-Open your browser to: **[http://localhost:5173](http://localhost:5173)**
+This starts the backend and frontend development servers concurrently.
 
----
+Open:
 
-## Available Root Commands
-
-| Command | Action |
-| :--- | :--- |
-| `npm run dev:all` | **Single-command startup**: runs backend & frontend concurrently via `concurrently` |
-| `npm run dev` | Alias for `npm run dev:all` |
-| `npm run dev:backend` | Starts backend development server (`node --watch`) |
-| `npm run dev:frontend` | Starts Vite frontend dev server on port 5173 |
-| `npm run build` | Compiles backend TypeScript and builds production Vite frontend |
-| `npm run test` | Runs the Vitest automated test suite (39 passing tests across 3 suites) |
-| `npm run seed` | Seeds or updates the 28 products catalogue in SQLite |
-| `npm run install:all` | Installs root, backend, and frontend dependencies in one step |
+http://localhost:5173
 
 ---
 
-## Local PayPal Webhook Testing (Zero Cloud Hosting Needed)
+📋 Available Commands
 
-The backend exposes `POST /api/paypal/webhook` with cryptographic signature verification and deduplication. To test real-time webhooks locally without deploying to any cloud host:
+Command| Description
+"npm run install:all"| Install all project dependencies
+"npm run dev:all"| Start frontend and backend
+"npm run dev"| Development startup alias
+"npm run dev:backend"| Start backend only
+"npm run dev:frontend"| Start frontend only
+"npm run build"| Build frontend and backend
+"npm run test"| Run automated tests
+"npm run seed"| Seed product catalogue
 
-### Step 1: Start a Local Secure Tunnel
-Use `ngrok` or `cloudflared` to expose your local backend port (`4000`):
-```bash
-# Using ngrok
+---
+
+🧪 Testing and Verification
+
+The project includes an automated test suite covering product discovery, recommendation logic, cart calculations, payment operations, webhooks and security-related behaviour.
+
+Run the tests using:
+
+npm test
+
+The currently documented test suite contains 39 automated tests across three suites. Confirm the latest test run before relying on this count.
+
+Areas Covered
+
+Product Discovery
+
+- Budget-based filtering.
+- Product suitability.
+- Usage-profile recommendations.
+- Priority-based ranking.
+
+Cart and Pricing
+
+- Integer paise calculations.
+- Backend-controlled product pricing.
+- Cart and order calculations.
+
+Payment Processing
+
+- PayPal order lifecycle.
+- Capture verification.
+- Payment cancellation.
+- Transaction state handling.
+
+Security
+
+- Protection against client-side price tampering.
+- Session isolation.
+- CSRF protection.
+- Webhook signature verification.
+- Webhook retry and idempotency handling.
+
+These tests validate application behaviour under the tested scenarios; they do not establish that every production environment or external integration is failure-proof.
+
+---
+
+🔔 PayPal Webhook Configuration
+
+The backend exposes the following webhook endpoint:
+
+POST /api/paypal/webhook
+
+Local Webhook Testing
+
+For local testing, a secure tunnel such as ngrok can expose the backend.
+
 ngrok http 4000
 
-# Or using Cloudflare Tunnel
-cloudflared tunnel --url http://localhost:4000
-```
-Note the HTTPS forwarding URL (e.g. `https://your-tunnel-id.ngrok-free.app`).
+Register the generated HTTPS URL in your PayPal Developer Dashboard:
 
-### Step 2: Register Webhook in PayPal Developer Dashboard
-1. Log in to [PayPal Developer Dashboard](https://developer.paypal.com/dashboard/).
-2. Navigate to **Apps & Credentials** > Select your Sandbox App.
-3. Under **Webhooks**, click **Add Webhook**.
-4. Set **Webhook URL** to: `https://your-tunnel-id.ngrok-free.app/api/paypal/webhook`
-5. Select the following event types:
-   - `Checkout order approved` (`CHECKOUT.ORDER.APPROVED`)
-   - `Payment capture completed` (`PAYMENT.CAPTURE.COMPLETED`)
-   - `Payment capture pending` (`PAYMENT.CAPTURE.PENDING`)
-   - `Payment capture denied` (`PAYMENT.CAPTURE.DENIED`)
-   - `Payment capture refunded` (`PAYMENT.CAPTURE.REFUNDED`)
-   - `Payment capture reversed` (`PAYMENT.CAPTURE.REVERSED`)
-6. Save the webhook and copy the generated **Webhook ID**.
-7. Paste this Webhook ID into your local `.env`:
-   ```env
-   PAYPAL_WEBHOOK_ID=your_webhook_id_here
-   ```
+https://your-ngrok-url/api/paypal/webhook
 
-### Step 3: Test via Webhook Simulator & Real Sandbox Payment
-1. **Webhook Simulator**: In PayPal Developer Dashboard > **Webhooks Simulator**, select your Webhook URL, choose `Payment capture completed`, and click **Send test**. Check your backend terminal to verify delivery, cryptographic signature check, and deduplication logging.
-2. **Real Sandbox Payment**: Perform a test purchase via the ShopGenie frontend using Sandbox buyer credentials. The server captures and verifies the payment, marks the order `paid`, and safely processes any parallel or asynchronous webhooks idempotently without duplicate stock decrements.
+Configure the Sandbox webhook events supported by the application, including:
 
----
+- "CHECKOUT.ORDER.APPROVED"
+- "PAYMENT.CAPTURE.COMPLETED"
+- "PAYMENT.CAPTURE.PENDING"
+- "PAYMENT.CAPTURE.DENIED"
+- "PAYMENT.CAPTURE.REFUNDED"
+- "PAYMENT.CAPTURE.REVERSED"
 
-## Verification & Test Suite
+Copy the generated Webhook ID into your local ".env" file.
 
-ShopGenie AI comes with 39 automated tests covering discovery, cart math, PayPal order lifecycles, webhooks, and security invariants:
+PAYPAL_WEBHOOK_ID=your_webhook_id
 
-```bash
-npm test
-```
+Production Webhook Configuration
 
-### Key Tests Verified (100% Passing):
-- **Budget Filtering**: Hard constraint excludes over-budget products (e.g. ₹89,990 MacBook M2 excluded for ₹50,000 budget).
-- **Battery Priority**: Promotes 10h–12h battery laptops in ranking score and explanation.
-- **Usage Profiles**: Programmer, Gamer, and Video Editor profiles produce divergent top recommendations on the same catalogue.
-- **Cart Calculations**: Integer paise calculation prevents floating-point rounding bugs.
-- **Tampering Invariant**: Client cannot tamper with prices; unit price is read strictly from SQLite products table.
-- **AI Security Invariants**: Prompt injections ("make it free", "mark order paid") cannot alter cart totals or order states.
-- **Cancellation Safe**: Order cancellation safely sets status to `cancelled` without clearing the cart.
-- **Session Scoping & CSRF**: One session cannot access or mutate another session's cart or orders; foreign cross-origin state mutations are rejected with HTTP 403.
-- **Webhook Retry & Idempotency**: Failed webhook executions are cleanly retried upon redelivery; successful events are deduplicated; refunds and reversals are idempotently recorded without double-decrementing stock.
+For the Render deployment, the intended webhook URL is:
+
+https://shopgenie-ai-km58.onrender.com/api/paypal/webhook
+
+To enable production webhook delivery:
+
+1. Open the PayPal Developer Dashboard.
+2. Select your Sandbox application.
+3. Register the Render webhook URL.
+4. Select the supported event types.
+5. Copy the generated Webhook ID.
+6. Configure "PAYPAL_WEBHOOK_ID" in Render environment variables.
+7. Verify webhook delivery using the PayPal Webhooks Simulator.
+
+Production verification status: Registering a local ngrok webhook does not automatically configure the Render deployment. Production webhook delivery must be independently tested.
 
 ---
 
-## Documentation
+⚠️ Current Limitations and Known Constraints
 
-- [System Architecture](docs/architecture.md): Deep-dive into system design, trust boundary, data model, and ranking math.
-- [Demo Guide & 3-Minute Script](docs/demo-guide.md): Step-by-step evaluator testing path and video script.
-- [Test Notes & Verification Report](docs/test-notes.md): Automated test coverage and PayPal Sandbox credentials guide.
+We believe in documenting the current capabilities and limitations of the prototype transparently.
+
+Product Catalogue
+
+The current application uses 28 curated products across five categories.
+
+It does not currently represent a live marketplace-wide product catalogue or guarantee real-time market prices.
+
+Currency Conversion
+
+The application uses a fixed INR-to-USD conversion rate:
+
+INR_TO_USD=0.012
+
+This is a demonstration conversion rate and is not connected to a live foreign exchange service.
+
+Payment Environment
+
+PayPal integration operates in Sandbox mode.
+
+No real-money transactions are processed.
+
+Hosting and Availability
+
+The application is hosted on Render's free tier.
+
+The service may sleep after inactivity, resulting in slower initial responses when it starts again.
+
+Database Persistence
+
+The application uses SQLite.
+
+Database persistence on Render depends on the configured storage location and persistent disk settings. If the database is stored on an ephemeral filesystem, its contents may be lost following redeployment or instance replacement.
+
+Demo data may therefore need to be reseeded depending on the deployment configuration.
+
+AI Dependency
+
+Gemini-powered functionality depends on API availability, configured credentials and applicable usage limits.
+
+Supported deterministic backend operations can provide fallback behaviour when AI functionality is unavailable.
 
 ---
 
-## License
+📁 Project Documentation
 
-This project is licensed under the [MIT License](LICENSE).
+Additional technical documentation is available in the repository:
 
+- "System Architecture" (docs/architecture.md) – Architecture, security boundaries, database design and recommendation scoring.
+- "Demo Guide" (docs/demo-guide.md) – Evaluator instructions and demonstration script.
+- "Test Notes" (docs/test-notes.md) – Automated testing and verification details.
+
+---
+
+🔮 Future Improvements
+
+Potential future improvements include:
+
+- Expanding the product catalogue.
+- Integrating live product and price feeds.
+- Dynamic currency conversion using exchange-rate services.
+- Persistent production database infrastructure.
+- Enhanced conversational shopping preferences.
+- Additional recommendation personalisation.
+- Expanded production monitoring and integration testing.
+
+---
+
+🎯 Project Objective
+
+ShopGenie AI demonstrates how conversational AI, explainable recommendation systems and secure digital payments can work together to improve the online shopping experience.
+
+Our central design principle is simple:
+
+AI helps customers discover what to buy. Customers decide what to buy. The backend securely handles how they pay.
+
+---
+
+👨‍💻 Contributors
+
+Developed as a hackathon project.
+
+GitHub Repository:
+https://github.com/ROHITSAMPATHI-03/ShopGenie-AI
+
+Live Application:
+https://shopgenie-ai-km58.onrender.com
+
+---
+
+📄 License
+
+This project is licensed under the "MIT License" (LICENSE).
